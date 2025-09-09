@@ -92,8 +92,8 @@ export function HomePage() {
         </p>
       </div>
 
-      {/* Action Cards */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
+      {/* Action Cards - Row 1: Main Actions */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -192,7 +192,10 @@ export function HomePage() {
             )}
           </CardContent>
         </Card>
+      </div>
 
+      {/* Action Cards - Row 2: Advanced Actions */}
+      <div className="grid md:grid-cols-2 gap-6">
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
