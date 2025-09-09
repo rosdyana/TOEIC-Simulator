@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Clock, ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react';
-import { storage } from '@/lib/storage';
+import { Clock, ArrowLeft, ArrowRight, CheckCircle, Pause, Play } from 'lucide-react';
+import { fileStorage } from '@/lib/fileStorage';
 import { Simulation, StatsRecord } from '@/types';
 import { formatTime, calculateScore } from '@/lib/utils';
 import { QuestionCard } from '@/components/QuestionCard';
@@ -21,12 +21,24 @@ export function SimulationPage() {
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [sessionSaved, setSessionSaved] = useState(false);
 
   useEffect(() => {
     if (id) {
-      const sim = storage.getSimulation(id);
+      const sim = fileStorage.getSimulation(id);
       if (sim) {
         setSimulation(sim);
+        
+        // Try to load saved session
+        const savedSession = fileStorage.getSession(id);
+        if (savedSession) {
+          setCurrentQuestion(savedSession.currentQuestion);
+          setAnswers(savedSession.answers);
+          setTimeElapsed(savedSession.timeElapsed);
+          setIsPaused(savedSession.isPaused);
+          setSessionSaved(true);
+        }
       } else {
         navigate('/');
       }
@@ -34,20 +46,45 @@ export function SimulationPage() {
   }, [id, navigate]);
 
   useEffect(() => {
-    if (!simulation || isCompleted) return;
+    if (!simulation || isCompleted || isPaused) return;
 
     const timer = setInterval(() => {
       setTimeElapsed(prev => prev + 1);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [simulation, isCompleted]);
+  }, [simulation, isCompleted, isPaused]);
 
   const handleAnswerSelect = (questionId: number, answer: string) => {
     setAnswers(prev => ({
       ...prev,
       [questionId]: answer
     }));
+  };
+
+  const handlePause = () => {
+    setIsPaused(true);
+    saveSession();
+  };
+
+  const handleResume = () => {
+    setIsPaused(false);
+  };
+
+  const saveSession = () => {
+    if (!simulation) return;
+    
+    const sessionData = {
+      simulationId: simulation.id,
+      currentQuestion,
+      answers,
+      timeElapsed,
+      isPaused,
+      savedAt: new Date().toISOString()
+    };
+    
+    fileStorage.saveSession(sessionData);
+    setSessionSaved(true);
   };
 
   const handleNext = () => {
@@ -83,7 +120,8 @@ export function SimulationPage() {
       answers: answerRecords
     };
 
-    storage.saveStats(statsRecord);
+    fileStorage.saveStats(statsRecord);
+    fileStorage.clearSession(simulation.id); // Clear saved session after completion
     setIsCompleted(true);
     setShowResults(true);
   };
@@ -136,7 +174,13 @@ export function SimulationPage() {
               <div className="flex items-center space-x-2 text-lg font-mono">
                 <Clock className="h-5 w-5" />
                 <span>{formatTime(timeElapsed)}</span>
+                {isPaused && <span className="text-orange-600 text-sm">(Paused)</span>}
               </div>
+              {sessionSaved && (
+                <div className="text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
+                  Session Saved
+                </div>
+              )}
             </div>
           </div>
           <Progress value={progress} className="mt-4" />
@@ -163,22 +207,22 @@ export function SimulationPage() {
               Previous
             </Button>
 
-            <div className="flex space-x-2">
-              {simulation.questions.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentQuestion(index)}
-                  className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-                    index === currentQuestion
-                      ? 'bg-blue-600 text-white'
-                      : answers[simulation.questions[index].id]
-                      ? 'bg-green-100 text-green-800 border border-green-300'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {index + 1}
-                </button>
-              ))}
+            <div className="flex items-center space-x-4">
+              {isPaused ? (
+                <Button onClick={handleResume} variant="outline">
+                  <Play className="h-4 w-4 mr-2" />
+                  Resume
+                </Button>
+              ) : (
+                <Button onClick={handlePause} variant="outline">
+                  <Pause className="h-4 w-4 mr-2" />
+                  Pause & Save
+                </Button>
+              )}
+              
+              <Button onClick={saveSession} variant="outline" size="sm">
+                Save Progress
+              </Button>
             </div>
 
             <Button

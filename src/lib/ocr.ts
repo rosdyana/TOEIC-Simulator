@@ -219,6 +219,170 @@ function extractQuestionFromText(text: string, questionNumber: number): { questi
   };
 }
 
+// Function to debug OCR results
+export function debugOCRResults(ocrText: string, startNumber: number, endNumber: number): void {
+  console.log('=== OCR DEBUG INFO ===');
+  console.log('Raw OCR Text:', ocrText);
+  console.log('Text Length:', ocrText.length);
+  console.log('Expected Range:', `${startNumber} to ${endNumber}`);
+  
+  // Show all numbers found
+  const numbers = ocrText.match(/\d+/g);
+  console.log('All numbers found:', numbers);
+  
+  // Show all letters found
+  const letters = ocrText.match(/[ABCD]/gi);
+  console.log('All letters found:', letters);
+  
+  // Show potential answer patterns
+  const patterns = [
+    /(\d+)\s*\(\s*([ABCD])\s*\)/gi,
+    /(\d+)\s+([ABCD])/gi,
+    /(\d+):\s*([ABCD])/gi
+  ];
+  
+  patterns.forEach((pattern, index) => {
+    const matches = [...ocrText.matchAll(pattern)];
+    console.log(`Pattern ${index + 1} matches:`, matches.map(m => `${m[1]} -> ${m[2]}`));
+  });
+  
+  // Show line by line analysis
+  const lines = ocrText.split('\n').filter(line => line.trim());
+  console.log('Text lines:', lines);
+  
+  // Show character analysis
+  const uniqueChars = [...new Set(ocrText)].sort();
+  console.log('Unique characters found:', uniqueChars);
+  
+  console.log('=== END DEBUG INFO ===');
+}
+
+
+// Function to parse answer sheet only (format: "101 (B)", "102 (D)", etc.)
+export async function parseAnswerSheetFromImage(
+  answerSheetImage: File,
+  title: string,
+  startNumber: number = 101,
+  endNumber: number = 200
+): Promise<Simulation> {
+  try {
+    console.log('Starting answer sheet OCR processing...');
+    console.log('Answer sheet:', answerSheetImage.name);
+
+    // Initialize Tesseract worker (simplified approach like example.js)
+    const worker = await Tesseract.createWorker('eng', 1, {
+      logger: (m) => {
+        if (m.status === 'recognizing text') {
+          console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
+        }
+      }
+    });
+
+    // Configure OCR settings for better text recognition
+    await worker.setParameters({
+      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?()[]{}":;-\' ',
+      tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+    });
+
+    // Process answer sheet
+    console.log('Processing answer sheet...');
+    const answerSheetResult = await worker.recognize(answerSheetImage);
+    const answerSheetText = answerSheetResult.data.text;
+    console.log('Answer sheet text extracted:', answerSheetText.substring(0, 200) + '...');
+    console.log('Full OCR text for debugging:', answerSheetText);
+    
+    // Debug OCR results
+    debugOCRResults(answerSheetText, startNumber, endNumber);
+    
+    // Extract answers from answer sheet using proven approach
+    const answers = extractAnswersFromAnswerSheet(answerSheetText, startNumber, endNumber);
+    console.log('Extracted answers:', answers);
+    
+    // Check if we got mostly 'A' answers (indicating parsing failure)
+    const nonDefaultAnswers = answers.filter(answer => answer !== 'A').length;
+    const totalAnswers = answers.length;
+    const defaultRatio = (totalAnswers - nonDefaultAnswers) / totalAnswers;
+    
+    console.log(`Default answers ratio: ${defaultRatio.toFixed(2)} (${nonDefaultAnswers}/${totalAnswers} non-default)`);
+    
+    // If we got mostly default answers, the OCR might not have worked well
+    if (defaultRatio > 0.9) {
+      console.warn('Warning: Most answers are default "A". OCR might not have parsed the image correctly.');
+      console.log('Consider using manual input or checking the image quality.');
+    }
+
+    // Create questions with correct answers only
+    const questions: Question[] = answers.map((answer, index) => ({
+      id: startNumber + index,
+      type: 'answer-key',
+      question: `Question ${startNumber + index} - Answer key only (to be added later)`,
+      options: ['A', 'B', 'C', 'D'],
+      answer: answer,
+      answerGrid: [{ questionNumber: startNumber + index, answer: answer }]
+    }));
+
+    // Terminate worker
+    await worker.terminate();
+
+    const simulation: Simulation = {
+      id: generateId(),
+      title: title || 'TOEIC Answer Sheet Test',
+      questions,
+      createdAt: new Date().toISOString(),
+      isAnswerKeyOnly: true
+    };
+
+    console.log('Answer sheet OCR processing completed successfully');
+    return simulation;
+
+  } catch (error) {
+    console.error('Answer sheet OCR parsing failed:', error);
+    throw new Error('Failed to parse answer sheet. Please ensure the image is clear and try again.');
+  }
+}
+
+// Helper function to extract answers from answer sheet text (based on example.js approach)
+function extractAnswersFromAnswerSheet(text: string, startNumber: number, endNumber: number): string[] {
+  console.log('Raw OCR text for parsing:', text);
+  
+  // Use the proven regex pattern from example.js
+  const questionRegex = /(\d+)\s*\(?\s*([ABCDabcd])\s*\)?/g;
+  const key: { [key: number]: string } = {};
+  let match;
+  const foundQuestionNumbers = new Set<number>();
+  const foundPairs: { questionNumber: number; correctAnswer: string }[] = [];
+
+  // Extract all matches using the proven pattern
+  while ((match = questionRegex.exec(text)) !== null) {
+    const questionNumber = parseInt(match[1], 10);
+    const correctAnswer = match[2].toUpperCase();
+    foundPairs.push({ questionNumber, correctAnswer });
+    foundQuestionNumbers.add(questionNumber);
+    console.log(`Found: ${questionNumber} -> ${correctAnswer}`);
+  }
+
+  // Sort pairs by question number
+  foundPairs.sort((a, b) => a.questionNumber - b.questionNumber);
+
+  // Build the answer key
+  foundPairs.forEach(pair => {
+    key[pair.questionNumber] = pair.correctAnswer;
+  });
+
+  console.log('Extracted answer key:', key);
+  console.log('Found question numbers:', Array.from(foundQuestionNumbers).sort((a, b) => a - b));
+
+  // Create answers array for the specified range
+  const answers: string[] = [];
+  for (let i = startNumber; i <= endNumber; i++) {
+    const answer = key[i] || 'A'; // Default to A if not found
+    answers.push(answer);
+  }
+
+  console.log(`Generated ${answers.length} answers for range ${startNumber}-${endNumber}`);
+  return answers;
+}
+
 // Additional utility function for image preprocessing
 export function preprocessImageForOCR(file: File): Promise<File> {
   return new Promise((resolve) => {

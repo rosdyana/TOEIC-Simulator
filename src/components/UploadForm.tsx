@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Upload, X, FileImage, Loader2 } from 'lucide-react';
 import { parseTestFromImages, preprocessImageForOCR } from '@/lib/ocr';
 import { validateImageFile } from '@/lib/ocrGuidelines';
-import { storage } from '@/lib/storage';
+import { fileStorage } from '@/lib/fileStorage';
 import { Simulation, UploadedFile } from '@/types';
 
 interface UploadFormProps {
@@ -103,7 +103,7 @@ export function UploadForm({ onSimulationCreated }: UploadFormProps) {
         title
       );
 
-      storage.saveSimulation(simulation);
+      fileStorage.saveSimulation(simulation);
       onSimulationCreated(simulation);
 
       // Clean up object URLs
