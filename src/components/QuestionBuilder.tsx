@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, X, Upload, Save, FileText, Image, FileImage, Grid3X3, Eye, Loader2 } from 'lucide-react';
 import { Question, Document } from '@/types';
-import { extractQuestionFromImage } from '@/lib/ocr';
+import { llmOCRService } from '@/lib/llmOCR';
 
 interface QuestionBuilderProps {
   question?: Question;
@@ -40,7 +40,7 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
   const [newInsertionPoint, setNewInsertionPoint] = useState({ position: 0, text: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isExtractingText, setIsExtractingText] = useState(false);
-  const [ocrError, setOcrError] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const handleTypeChange = (type: Question['type']) => {
     setQuestionData(prev => ({
@@ -79,13 +79,13 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
     if (file) {
       const objectUrl = URL.createObjectURL(file);
       setQuestionData(prev => ({ ...prev, image: objectUrl }));
-      setOcrError(null); // Clear any previous errors
+      setAiError(null); // Clear any previous errors
     }
   };
 
   const handleExtractTextFromImage = async () => {
     if (!questionData.image) {
-      setOcrError('Please upload an image first');
+      setAiError('Please upload an image first');
       return;
     }
 
@@ -100,29 +100,30 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
     }
 
     setIsExtractingText(true);
-    setOcrError(null);
+    setAiError(null);
 
     try {
-      // Convert the image URL back to a File object for OCR processing
+      // Convert the image URL back to a File object for AI processing
       const response = await fetch(questionData.image);
       const blob = await response.blob();
       const file = new File([blob], 'question-image.png', { type: 'image/png' });
 
-      const result = await extractQuestionFromImage(file);
+      const result = await llmOCRService.extractQuestionsFromImage(file);
 
-      if (result.success) {
+      if (result.success && result.questions && result.questions.length > 0) {
+        const firstQuestion = result.questions[0];
         setQuestionData(prev => ({
           ...prev,
-          question: result.question,
-          options: result.options
+          question: firstQuestion.question,
+          options: firstQuestion.options
         }));
-        console.log('Successfully extracted question text and options from image');
+        console.log('Successfully extracted question text and options from image using AI');
       } else {
-        setOcrError(result.error || 'Failed to extract text from image');
+        setAiError(result.error || 'Failed to extract text from image');
       }
     } catch (error) {
       console.error('Error extracting text from image:', error);
-      setOcrError('An error occurred while processing the image');
+      setAiError('An error occurred while processing the image');
     } finally {
       setIsExtractingText(false);
     }
@@ -313,10 +314,10 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
                 </div>
               )}
 
-              {/* OCR Error Display */}
-              {ocrError && (
+              {/* AI Error Display */}
+              {aiError && (
                 <div className="text-sm text-red-600 bg-red-50 p-2 rounded border">
-                  <strong>OCR Error:</strong> {ocrError}
+                  <strong>AI Error:</strong> {aiError}
                 </div>
               )}
             </div>

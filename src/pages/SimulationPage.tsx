@@ -3,10 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { Clock, ArrowLeft, ArrowRight, CheckCircle, Pause, Play } from 'lucide-react';
 import { fileStorage } from '@/lib/fileStorage';
+import { storage } from '@/lib/storage';
 import { Simulation, StatsRecord } from '@/types';
 import { formatTime, calculateScore } from '@/lib/utils';
 import { QuestionCard } from '@/components/QuestionCard';
@@ -120,7 +119,7 @@ export function SimulationPage() {
       answers: answerRecords
     };
 
-    fileStorage.saveStats(statsRecord);
+    storage.saveStats(statsRecord);
     fileStorage.clearSession(simulation.id); // Clear saved session after completion
     setIsCompleted(true);
     setShowResults(true);

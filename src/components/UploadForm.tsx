@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Upload, X, FileImage, Loader2 } from 'lucide-react';
-import { parseTestFromImages, preprocessImageForOCR } from '@/lib/ocr';
+import { llmOCRService } from '@/lib/llmOCR';
 import { validateImageFile } from '@/lib/ocrGuidelines';
 import { fileStorage } from '@/lib/fileStorage';
 import { Simulation, UploadedFile } from '@/types';
@@ -91,15 +90,9 @@ export function UploadForm({ onSimulationCreated }: UploadFormProps) {
     setError('');
 
     try {
-      // Preprocess images for better OCR results
-      const processedProblemFiles = await Promise.all(
-        problemImages.map(img => preprocessImageForOCR(img.file))
-      );
-      const processedAnswerSheet = await preprocessImageForOCR(answerSheet.file);
-      
-      const simulation = await parseTestFromImages(
-        processedProblemFiles,
-        processedAnswerSheet,
+      const simulation = await llmOCRService.parseTestFromImages(
+        problemImages.map(img => img.file),
+        answerSheet.file,
         title
       );
 
@@ -151,7 +144,7 @@ export function UploadForm({ onSimulationCreated }: UploadFormProps) {
                   <span className="font-semibold">Click to upload</span> problem images
                 </p>
                 <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB each</p>
-                <p className="text-xs text-blue-600 mt-1">Tip: Use clear, high-resolution images for better OCR results</p>
+                <p className="text-xs text-blue-600 mt-1">Tip: Use clear, high-resolution images for better AI recognition</p>
               </div>
               <input
                 id="problem-images"
@@ -200,7 +193,7 @@ export function UploadForm({ onSimulationCreated }: UploadFormProps) {
                   <span className="font-semibold">Click to upload</span> answer sheet
                 </p>
                 <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
-                <p className="text-xs text-blue-600 mt-1">Tip: Format answers as "1. A, 2. B, 3. C" for best results</p>
+                <p className="text-xs text-blue-600 mt-1">Tip: AI can recognize various answer sheet formats</p>
               </div>
               <input
                 id="answer-sheet"
@@ -247,7 +240,7 @@ export function UploadForm({ onSimulationCreated }: UploadFormProps) {
           {isProcessing ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Processing Images...
+              Processing with AI...
             </>
           ) : (
             'Create Simulation'

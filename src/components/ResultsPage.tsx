@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Clock, Trophy, RotateCcw, Home } from 'lucide-react';
+import { CheckCircle, XCircle, Trophy, RotateCcw, Home } from 'lucide-react';
 import { Simulation } from '@/types';
 import { calculateScore, formatTime } from '@/lib/utils';
 
@@ -92,7 +92,7 @@ export function ResultsPage({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {answerRecords.map((answer, index) => {
+            {answerRecords.map((answer) => {
               const isCorrect = answer.selected === answer.correct;
               const question = simulation.questions.find(q => q.id === answer.id);
               

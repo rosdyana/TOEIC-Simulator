@@ -1,6 +1,6 @@
-// OCR Guidelines and Tips for Better Recognition
+// AI Image Recognition Guidelines and Tips for Better Results
 
-export const OCR_GUIDELINES = {
+export const AI_GUIDELINES = {
   imageQuality: {
     title: "Image Quality Requirements",
     tips: [
@@ -36,12 +36,12 @@ export const OCR_GUIDELINES = {
     formats: ["PNG", "JPG", "JPEG", "GIF", "BMP", "WEBP"]
   },
   processingTime: {
-    title: "Processing Information",
+    title: "AI Processing Information",
     notes: [
-      "OCR processing typically takes 2-5 seconds per image",
-      "Larger images may take longer to process",
+      "AI processing typically takes 3-10 seconds per image",
+      "Processing time depends on image complexity and AI provider",
       "Progress is shown during processing",
-      "Processing happens entirely in your browser"
+      "Processing uses cloud-based AI services"
     ]
   }
 };

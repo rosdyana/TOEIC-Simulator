@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, X, FileImage, Loader2, Info } from 'lucide-react';
-import { parseAnswerSheetFromImage, preprocessImageForOCR } from '@/lib/ocr';
+import { Upload, X, Loader2, Info } from 'lucide-react';
+import { llmOCRService } from '@/lib/llmOCR';
 import { validateImageFile } from '@/lib/ocrGuidelines';
 import { fileStorage } from '@/lib/fileStorage';
 import { Simulation, UploadedFile } from '@/types';
@@ -138,15 +137,23 @@ export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUpload
     setError('');
 
     try {
-      // Preprocess image for better OCR results
-      const processedAnswerSheet = await preprocessImageForOCR(answerSheet.file);
-      
-      const simulation = await parseAnswerSheetFromImage(
-        processedAnswerSheet,
-        title,
+      const result = await llmOCRService.extractAnswerSheetFromImage(
+        answerSheet.file,
         startNumber,
         endNumber
       );
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to process answer sheet');
+      }
+      
+      const simulation: Simulation = {
+        id: Math.random().toString(36).substr(2, 9),
+        title: title || 'TOEIC Answer Sheet Test',
+        questions: result.questions || [],
+        createdAt: new Date().toISOString(),
+        isAnswerKeyOnly: true
+      };
 
       fileStorage.saveSimulation(simulation);
       onSimulationCreated(simulation);
@@ -176,7 +183,7 @@ export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUpload
           <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-blue-800">
             <p className="font-medium mb-1">Answer Sheet Upload</p>
-            <p>Upload an answer sheet image with answers in the format "101 (B)", "102 (D)", etc. The system will create a test with correct answers only. You can add questions later through the admin panel.</p>
+            <p>Upload an answer sheet image and AI will extract the answers automatically. The system will create a test with correct answers only. You can add questions later through the admin panel.</p>
           </div>
         </div>
       </div>
@@ -233,7 +240,7 @@ export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUpload
                   <span className="font-semibold">Click to upload</span> answer sheet
                 </p>
                 <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
-                <p className="text-xs text-blue-600 mt-1">Format: "101 (B)", "102 (D)", etc.</p>
+                <p className="text-xs text-blue-600 mt-1">AI can recognize various answer sheet formats</p>
               </div>
               <input
                 id="answer-sheet"
@@ -276,7 +283,7 @@ export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUpload
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-medium">Alternative: Manual Input</h3>
-            <p className="text-sm text-gray-600">If OCR fails, you can manually enter the answers</p>
+            <p className="text-sm text-gray-600">If AI recognition fails, you can manually enter the answers</p>
           </div>
           <Button
             variant="outline"
@@ -315,7 +322,7 @@ export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUpload
           {isProcessing ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Processing Answer Sheet...
+              Processing with AI...
             </>
           ) : showManualInput ? (
             'Create Test from Manual Input'

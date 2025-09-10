@@ -2,12 +2,11 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Trash2, Edit, Save, X, Plus, FileText, Image, FileImage, Grid3X3, Upload, Download } from 'lucide-react';
+import { Trash2, Edit, Plus, FileText, Image, FileImage, Grid3X3, Upload, Download } from 'lucide-react';
 import { fileStorage } from '@/lib/fileStorage';
 import { Simulation, Question } from '@/types';
 import { QuestionBuilder } from '@/components/QuestionBuilder';
+import { LLMSettings } from '@/components/LLMSettings';
 
 export function AdminPage() {
   const [simulations, setSimulations] = useState<Simulation[]>([]);
@@ -17,6 +16,7 @@ export function AdminPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [newSimulationTitle, setNewSimulationTitle] = useState('');
   const [isCreatingSimulation, setIsCreatingSimulation] = useState(false);
+  const [activeTab, setActiveTab] = useState<'simulations' | 'llm-settings'>('simulations');
 
   useEffect(() => {
     const loadedSimulations = fileStorage.getSimulations();
@@ -164,8 +164,37 @@ export function AdminPage() {
         <p className="text-gray-600">Create and manage complex TOEIC simulations with multiple question types</p>
       </div>
 
-      {/* Create New Simulation */}
-      {isCreatingSimulation && (
+      {/* Tab Navigation */}
+      <div className="flex justify-center">
+        <div className="flex bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setActiveTab('simulations')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'simulations'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Simulations
+          </button>
+          <button
+            onClick={() => setActiveTab('llm-settings')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'llm-settings'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            LLM Settings
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'simulations' && (
+        <>
+          {/* Create New Simulation */}
+          {isCreatingSimulation && (
         <Card>
           <CardHeader>
             <CardTitle>Create New Simulation</CardTitle>
@@ -388,13 +417,20 @@ export function AdminPage() {
           )}
         </div>
       </div>
+        </>
+      )}
+
+      {/* LLM Settings Tab */}
+      {activeTab === 'llm-settings' && (
+        <LLMSettings />
+      )}
 
       {/* Question Builder Modal */}
       {isEditing && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <QuestionBuilder
-              question={editingQuestion}
+              question={editingQuestion || undefined}
               onSave={handleSaveQuestion}
               onCancel={handleCancelEdit}
             />
