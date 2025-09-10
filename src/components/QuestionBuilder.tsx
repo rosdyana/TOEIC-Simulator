@@ -3,11 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, X, Upload, Save, FileText, Image, FileImage, Grid3X3 } from 'lucide-react';
+import { Plus, X, Upload, Save, FileText, Image, FileImage, Grid3X3, Eye, Loader2 } from 'lucide-react';
 import { Question, Document } from '@/types';
+import { extractQuestionFromImage } from '@/lib/ocr';
 
 interface QuestionBuilderProps {
   question?: Question;
@@ -39,6 +39,8 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
 
   const [newInsertionPoint, setNewInsertionPoint] = useState({ position: 0, text: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isExtractingText, setIsExtractingText] = useState(false);
+  const [ocrError, setOcrError] = useState<string | null>(null);
 
   const handleTypeChange = (type: Question['type']) => {
     setQuestionData(prev => ({
@@ -77,6 +79,52 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
     if (file) {
       const objectUrl = URL.createObjectURL(file);
       setQuestionData(prev => ({ ...prev, image: objectUrl }));
+      setOcrError(null); // Clear any previous errors
+    }
+  };
+
+  const handleExtractTextFromImage = async () => {
+    if (!questionData.image) {
+      setOcrError('Please upload an image first');
+      return;
+    }
+
+    // Show confirmation if there's existing content
+    if (questionData.question.trim() || questionData.options.some(opt => opt.trim())) {
+      const confirmed = confirm(
+        'This will overwrite the current question text and answer options. Are you sure you want to continue?'
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setIsExtractingText(true);
+    setOcrError(null);
+
+    try {
+      // Convert the image URL back to a File object for OCR processing
+      const response = await fetch(questionData.image);
+      const blob = await response.blob();
+      const file = new File([blob], 'question-image.png', { type: 'image/png' });
+
+      const result = await extractQuestionFromImage(file);
+
+      if (result.success) {
+        setQuestionData(prev => ({
+          ...prev,
+          question: result.question,
+          options: result.options
+        }));
+        console.log('Successfully extracted question text and options from image');
+      } else {
+        setOcrError(result.error || 'Failed to extract text from image');
+      }
+    } catch (error) {
+      console.error('Error extracting text from image:', error);
+      setOcrError('An error occurred while processing the image');
+    } finally {
+      setIsExtractingText(false);
     }
   };
 
@@ -128,7 +176,7 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
   const updateAnswerGridEntry = (index: number, field: 'questionNumber' | 'answer', value: string | number) => {
     setQuestionData(prev => ({
       ...prev,
-      answerGrid: prev.answerGrid?.map((entry, i) => 
+      answerGrid: prev.answerGrid?.map((entry, i) =>
         i === index ? { ...entry, [field]: value } : entry
       ) || []
     }));
@@ -175,7 +223,12 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
             Question Builder
           </CardTitle>
           <CardDescription>
-            Create or edit a question for your TOEIC simulation
+            Create or edit a question for your TOEIC simulation.
+            {questionData.type !== 'answer-key' && (
+              <span className="block mt-1 text-sm text-blue-600">
+                💡 Tip: Upload an image of a question to automatically extract the text and answer options!
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -224,14 +277,49 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
           {/* Question Text */}
           <div>
             <Label htmlFor="question-text">Question Text</Label>
-            <Textarea
-              id="question-text"
-              value={questionData.question}
-              onChange={(e) => setQuestionData(prev => ({ ...prev, question: e.target.value }))}
-              placeholder="Enter your question here..."
-              className="mt-1"
-              rows={3}
-            />
+            <div className="mt-1 space-y-2">
+              <Textarea
+                id="question-text"
+                value={questionData.question}
+                onChange={(e) => setQuestionData(prev => ({ ...prev, question: e.target.value }))}
+                placeholder="Enter your question here or upload an image to extract text automatically..."
+                rows={3}
+              />
+
+              {/* OCR Extraction Button - Show for all question types except answer-key */}
+              {questionData.type !== 'answer-key' && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExtractTextFromImage}
+                    disabled={isExtractingText || !questionData.image}
+                    className="flex items-center gap-2"
+                  >
+                    {isExtractingText ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                    {isExtractingText ? 'Extracting...' : 'Extract & Overwrite from Image'}
+                  </Button>
+
+                  {questionData.image && (
+                    <span className="text-sm text-gray-500">
+                      Image uploaded - click to extract and overwrite current text
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* OCR Error Display */}
+              {ocrError && (
+                <div className="text-sm text-red-600 bg-red-50 p-2 rounded border">
+                  <strong>OCR Error:</strong> {ocrError}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Reading Comprehension Passage */}
@@ -246,7 +334,7 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
                 className="mt-1"
                 rows={8}
               />
-              
+
               {/* Insertion Points */}
               <div className="mt-4">
                 <Label>Insertion Points</Label>
@@ -303,7 +391,7 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
                     </div>
                   </Card>
                 ))}
-                
+
                 <Card className="p-4 border-dashed">
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
@@ -395,8 +483,8 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
             </div>
           )}
 
-          {/* Image Upload */}
-          {(questionData.type === 'image' || questionData.type === 'multi-document') && (
+          {/* Image Upload - Available for all question types except answer-key */}
+          {questionData.type !== 'answer-key' && (
             <div>
               <Label>Image Upload</Label>
               <div className="mt-2">

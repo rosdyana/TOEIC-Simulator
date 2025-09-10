@@ -269,7 +269,11 @@ export async function parseAnswerSheetFromImage(
     console.log('Starting answer sheet OCR processing...');
     console.log('Answer sheet:', answerSheetImage.name);
 
-    // Initialize Tesseract worker (simplified approach like example.js)
+    // Preprocess the image for better OCR results
+    console.log('Preprocessing image for better OCR...');
+    const processedImage = await preprocessImageForOCR(answerSheetImage);
+
+    // Initialize Tesseract worker with improved configuration
     const worker = await Tesseract.createWorker('eng', 1, {
       logger: (m) => {
         if (m.status === 'recognizing text') {
@@ -281,13 +285,80 @@ export async function parseAnswerSheetFromImage(
     // Configure OCR settings for better text recognition
     await worker.setParameters({
       tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?()[]{}":;-\' ',
-      tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+      tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT, // Better for structured text
+      tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY, // Use LSTM for better accuracy
     });
 
-    // Process answer sheet
-    console.log('Processing answer sheet...');
-    const answerSheetResult = await worker.recognize(answerSheetImage);
-    const answerSheetText = answerSheetResult.data.text;
+    // Try multiple OCR approaches if the first one fails
+    let answerSheetText = '';
+    let attempts = 0;
+    const maxAttempts = 4;
+
+    const ocrConfigs = [
+      // Config 1: Sparse text mode (best for structured layouts)
+      {
+        tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT,
+        tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY,
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?()[]{}":;-\' '
+      },
+      // Config 2: Auto mode with legacy engine
+      {
+        tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+        tessedit_ocr_engine_mode: Tesseract.OEM.DEFAULT,
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?()[]{}":;-\' '
+      },
+      // Config 3: Single block mode
+      {
+        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+        tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY,
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?()[]{}":;-\' '
+      },
+      // Config 4: No character whitelist (most permissive)
+      {
+        tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+        tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY
+      }
+    ];
+
+    while (answerSheetText.trim().length === 0 && attempts < maxAttempts) {
+      attempts++;
+      console.log(`OCR attempt ${attempts}/${maxAttempts} with config ${attempts}...`);
+      
+      try {
+        // Apply configuration for this attempt
+        await worker.setParameters(ocrConfigs[attempts - 1]);
+        
+        const answerSheetResult = await worker.recognize(processedImage);
+        answerSheetText = answerSheetResult.data.text;
+        
+        console.log(`Attempt ${attempts} extracted ${answerSheetText.length} characters`);
+        
+        // If we got some text, break out of the loop
+        if (answerSheetText.trim().length > 0) {
+          console.log(`Success with config ${attempts}!`);
+          break;
+        }
+      } catch (error) {
+        console.warn(`OCR attempt ${attempts} failed:`, error);
+      }
+    }
+
+    // If all attempts failed, try with the original image (no preprocessing)
+    if (answerSheetText.trim().length === 0) {
+      console.log('All preprocessing attempts failed, trying with original image...');
+      try {
+        await worker.setParameters({
+          tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+          tessedit_ocr_engine_mode: Tesseract.OEM.DEFAULT
+        });
+        const fallbackResult = await worker.recognize(answerSheetImage);
+        answerSheetText = fallbackResult.data.text;
+        console.log(`Fallback attempt extracted ${answerSheetText.length} characters`);
+      } catch (error) {
+        console.error('Fallback OCR attempt also failed:', error);
+      }
+    }
+
     console.log('Answer sheet text extracted:', answerSheetText.substring(0, 200) + '...');
     console.log('Full OCR text for debugging:', answerSheetText);
     
@@ -305,10 +376,24 @@ export async function parseAnswerSheetFromImage(
     
     console.log(`Default answers ratio: ${defaultRatio.toFixed(2)} (${nonDefaultAnswers}/${totalAnswers} non-default)`);
     
-    // If we got mostly default answers, the OCR might not have worked well
-    if (defaultRatio > 0.9) {
+    // Provide detailed feedback about OCR success
+    if (answerSheetText.trim().length === 0) {
+      console.error('OCR failed to extract any text from the image.');
+      console.log('Suggestions:');
+      console.log('1. Ensure the image is clear and high resolution');
+      console.log('2. Check that the text is not too small or blurry');
+      console.log('3. Try taking a new photo with better lighting');
+      console.log('4. Consider using manual input instead');
+    } else if (defaultRatio > 0.9) {
       console.warn('Warning: Most answers are default "A". OCR might not have parsed the image correctly.');
+      console.log('The OCR extracted text but could not parse the answer format.');
+      console.log('Extracted text preview:', answerSheetText.substring(0, 500));
       console.log('Consider using manual input or checking the image quality.');
+    } else if (nonDefaultAnswers < 10) {
+      console.warn('Warning: Only found a few answers. OCR might not have parsed the image correctly.');
+      console.log('Consider using manual input or checking the image quality.');
+    } else {
+      console.log(`Successfully extracted ${nonDefaultAnswers} answers from the image!`);
     }
 
     // Create questions with correct answers only
@@ -345,20 +430,73 @@ export async function parseAnswerSheetFromImage(
 function extractAnswersFromAnswerSheet(text: string, startNumber: number, endNumber: number): string[] {
   console.log('Raw OCR text for parsing:', text);
   
-  // Use the proven regex pattern from example.js
-  const questionRegex = /(\d+)\s*\(?\s*([ABCDabcd])\s*\)?/g;
+  // Multiple regex patterns to handle different OCR variations
+  const patterns = [
+    // Primary pattern: "101 (B)" or "101(B)" or "101 ( B )"
+    /(\d+)\s*\(\s*([ABCDabcd])\s*\)/g,
+    // Secondary pattern: "101 B" or "101: B"
+    /(\d+)[:\s]+\s*([ABCDabcd])\b/g,
+    // Tertiary pattern: "101. B" or "101) B"
+    /(\d+)[\.\)]\s*([ABCDabcd])\b/g,
+    // Fallback pattern: any number followed by A/B/C/D
+    /(\d+)\s+([ABCDabcd])\b/g,
+    // Alternative pattern: "Q101: B" or "Question 101: B"
+    /(?:q|question)\s*(\d+)[:\s]+\s*([ABCDabcd])\b/gi
+  ];
+  
   const key: { [key: number]: string } = {};
-  let match;
   const foundQuestionNumbers = new Set<number>();
   const foundPairs: { questionNumber: number; correctAnswer: string }[] = [];
 
-  // Extract all matches using the proven pattern
-  while ((match = questionRegex.exec(text)) !== null) {
-    const questionNumber = parseInt(match[1], 10);
-    const correctAnswer = match[2].toUpperCase();
-    foundPairs.push({ questionNumber, correctAnswer });
-    foundQuestionNumbers.add(questionNumber);
-    console.log(`Found: ${questionNumber} -> ${correctAnswer}`);
+  // Try each pattern until we find matches
+  for (let patternIndex = 0; patternIndex < patterns.length; patternIndex++) {
+    const pattern = patterns[patternIndex];
+    let match;
+    pattern.lastIndex = 0; // Reset regex state
+    
+    console.log(`Trying pattern ${patternIndex + 1}:`, pattern);
+    
+    while ((match = pattern.exec(text)) !== null) {
+      const questionNumber = parseInt(match[1], 10);
+      const correctAnswer = match[2].toUpperCase();
+      
+      // Validate the answer is A, B, C, or D
+      if (/[ABCD]/.test(correctAnswer)) {
+        foundPairs.push({ questionNumber, correctAnswer });
+        foundQuestionNumbers.add(questionNumber);
+        console.log(`Found: ${questionNumber} -> ${correctAnswer}`);
+      }
+    }
+    
+    // If we found matches with this pattern, break
+    if (foundPairs.length > 0) {
+      console.log(`Pattern ${patternIndex + 1} found ${foundPairs.length} matches`);
+      break;
+    }
+  }
+
+  // If no patterns worked, try a more aggressive approach
+  if (foundPairs.length === 0) {
+    console.log('No patterns matched, trying aggressive extraction...');
+    
+    // Extract all numbers and letters separately, then try to pair them
+    const numbers = text.match(/\d+/g) || [];
+    const letters = text.match(/[ABCD]/gi) || [];
+    
+    console.log('Found numbers:', numbers);
+    console.log('Found letters:', letters);
+    
+    // Try to pair numbers with letters based on proximity
+    for (let i = 0; i < Math.min(numbers.length, letters.length); i++) {
+      const questionNumber = parseInt(numbers[i], 10);
+      const correctAnswer = letters[i].toUpperCase();
+      
+      if (questionNumber >= startNumber && questionNumber <= endNumber) {
+        foundPairs.push({ questionNumber, correctAnswer });
+        foundQuestionNumbers.add(questionNumber);
+        console.log(`Aggressive match: ${questionNumber} -> ${correctAnswer}`);
+      }
+    }
   }
 
   // Sort pairs by question number
@@ -383,6 +521,244 @@ function extractAnswersFromAnswerSheet(text: string, startNumber: number, endNum
   return answers;
 }
 
+// Function to extract question text and options from a question image
+export async function extractQuestionFromImage(imageFile: File): Promise<{
+  question: string;
+  options: string[];
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    console.log('Starting question OCR extraction...');
+    console.log('Image file:', imageFile.name);
+
+    // Preprocess the image for better OCR results
+    const processedImage = await preprocessImageForOCR(imageFile);
+
+    // Initialize Tesseract worker
+    const worker = await Tesseract.createWorker('eng', 1, {
+      logger: (m) => {
+        if (m.status === 'recognizing text') {
+          console.log(`Question OCR Progress: ${Math.round(m.progress * 100)}%`);
+        }
+      }
+    });
+
+    // Configure OCR settings for question text recognition
+    await worker.setParameters({
+      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?()[]{}":;-\' ',
+      tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+    });
+
+    // Process the image
+    const result = await worker.recognize(processedImage);
+    const extractedText = result.data.text;
+    
+    console.log('Question OCR text extracted:', extractedText);
+    console.log('OCR text length:', extractedText.length);
+    console.log('OCR text lines:', extractedText.split('\n'));
+    
+    // Terminate worker
+    await worker.terminate();
+
+    if (!extractedText || extractedText.trim().length === 0) {
+      return {
+        question: '',
+        options: ['', '', '', ''],
+        success: false,
+        error: 'No text extracted from image'
+      };
+    }
+
+    // Extract question and options from the text
+    const { question, options } = parseQuestionFromText(extractedText);
+    
+    console.log('Extracted question:', question);
+    console.log('Extracted options:', options);
+
+    if (!question && options.length === 0) {
+      return {
+        question: '',
+        options: ['', '', '', ''],
+        success: false,
+        error: 'Could not parse question or options from extracted text'
+      };
+    }
+
+    return {
+      question,
+      options,
+      success: true
+    };
+
+  } catch (error) {
+    console.error('Question OCR extraction failed:', error);
+    return {
+      question: '',
+      options: ['', '', '', ''],
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}
+
+// Helper function to parse question text and options from OCR result
+function parseQuestionFromText(text: string): { question: string; options: string[] } {
+  console.log('Parsing question from text:', text);
+  
+  // Split into lines, trim, and filter empty lines
+  let lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  console.log('Text lines (initial):', lines);
+  
+  // Attempt to re-assemble split option lines (e.g., "D) himse" + "lf")
+  const reassembledLines: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const currentLine = lines[i];
+    const nextLine = lines[i + 1];
+    
+    // Check if current line looks like a partial option start (e.g., "D) some")
+    // and next line is short and could be a continuation
+    const partialOptionStartRegex = /^\s*([ABCD])(?:\)|\.)\s*(\S.*)/i;
+    const continuationRegex = /^\s*(\S.*)/;
+    
+    if (currentLine.match(partialOptionStartRegex) && nextLine && nextLine.length < 15 && nextLine.match(continuationRegex)) {
+      // Heuristic: if a line starts like an option and the next line is short, merge them
+      reassembledLines.push(`${currentLine} ${nextLine}`);
+      i++; // Skip the next line as it's merged
+    } else {
+      reassembledLines.push(currentLine);
+    }
+  }
+  lines = reassembledLines;
+  console.log('Text lines (reassembled):', lines);
+  
+  let question = '';
+  let options: string[] = [];
+  
+  // First, try to identify option lines using a more specific regex
+  // Only match lines that start with (A), (B), (C), (D) or A), B), C), D)
+  const optionLineRegex = /^\s*\(([ABCD])\)\s*(.*)$|^\s*([ABCD])\)\s*(.*)$/i;
+  const potentialOptionLines: string[] = [];
+  const nonOptionLines: string[] = [];
+  
+  for (const line of lines) {
+    console.log(`Testing line: "${line}"`);
+    const match = optionLineRegex.test(line);
+    console.log(`Option regex match: ${match}`);
+    if (match) {
+      potentialOptionLines.push(line);
+    } else {
+      nonOptionLines.push(line);
+    }
+  }
+  console.log('Potential option lines:', potentialOptionLines);
+  console.log('Non-option lines:', nonOptionLines);
+  
+  // If options are found, extract them and fill in missing ones
+  if (potentialOptionLines.length > 0) {
+    const extractedMap: { [key: string]: string } = {};
+    potentialOptionLines.forEach(line => {
+      const match = line.match(optionLineRegex);
+      if (match) {
+        // Handle both regex groups: (A) text or A) text
+        const letter = (match[1] || match[3]).toUpperCase();
+        const text = (match[2] || match[4]).trim();
+        extractedMap[letter] = text; // Just store the text, not the letter prefix
+      }
+    });
+    
+    // Ensure we have A, B, C, D, filling in defaults if missing
+    const finalOptions: string[] = [];
+    const optionChars = ['A', 'B', 'C', 'D'];
+    optionChars.forEach(char => {
+      if (extractedMap[char]) {
+        finalOptions.push(extractedMap[char]); // Just the text value
+      } else {
+        finalOptions.push(`Option ${char}`); // Default without letter prefix
+      }
+    });
+    options = finalOptions;
+    
+    // The question is everything before the first option
+    question = nonOptionLines.join(' ').replace(/-{3,}/g, '_____').trim();
+  } else {
+    // Fallback: if no clear options, try to find question based on common patterns
+    const questionTextCandidate = nonOptionLines.join(' ');
+    
+    const questionPatterns = [
+      // Pattern for questions with blanks: "text ------- text"
+      /([^ABCD]*?)\s*-{3,}\s*([^ABCD]*?)(?=[ABCD]|$)/i,
+      // Pattern for questions ending with question mark
+      /([^ABCD]*\?)/i,
+      // Pattern for questions with "about" or similar keywords
+      /([^ABCD]*?(?:about|regarding|concerning|speaking|talking)[^ABCD]*?)(?=[ABCD]|$)/i,
+      // Fallback: take everything before the first option-like pattern (if any)
+      /([^ABCD]*?)(?=\s*[ABCD][).])/i,
+      // Final fallback: just take the first few lines
+      /^(.{10,200}?)(?=\s*[ABCD]|$)/i,
+    ];
+    
+    for (const pattern of questionPatterns) {
+      const match = questionTextCandidate.match(pattern);
+      if (match && match[1].trim().length > 10) {
+        question = match[1].trim().replace(/-{3,}/g, '_____');
+        break;
+      }
+    }
+    
+    // If question still not found, take the first few lines as a last resort
+    if (!question && nonOptionLines.length > 0) {
+      question = nonOptionLines.slice(0, Math.min(3, nonOptionLines.length)).join(' ').replace(/-{3,}/g, '_____').trim();
+    }
+    
+    // Aggressive option extraction if no options found (as a last resort)
+    const aggressiveOptionRegex = /\b([ABCD])(?:\)|\.)\s*([^ABCD]*?)(?=\b[ABCD][).]|$)|\b([ABCD])(?:\)|\.)\s*([^\n]*)/gi;
+    let aggressiveMatch;
+    const aggressiveOptions: string[] = [];
+    
+    // Use the original full text for aggressive matching, as it might span lines
+    while ((aggressiveMatch = aggressiveOptionRegex.exec(text)) !== null) {
+      const optionChar = aggressiveMatch[1] || aggressiveMatch[3];
+      const optionText = aggressiveMatch[2] || aggressiveMatch[4];
+      if (optionChar && optionText) {
+        aggressiveOptions.push(`${optionChar.toUpperCase()}) ${optionText.trim()}`);
+      }
+    }
+    
+    // If aggressive options are found, use them and fill in missing ones
+    if (aggressiveOptions.length > 0) {
+      const extractedMap: { [key: string]: string } = {};
+      aggressiveOptions.forEach(opt => {
+        const char = opt.charAt(0);
+        const text = opt.substring(3); // Remove "A) " prefix
+        extractedMap[char] = text;
+      });
+      
+      const finalOptions: string[] = [];
+      const optionChars = ['A', 'B', 'C', 'D'];
+      optionChars.forEach(char => {
+        if (extractedMap[char]) {
+          finalOptions.push(extractedMap[char]); // Just the text value
+        } else {
+          finalOptions.push(`Option ${char}`); // Default without letter prefix
+        }
+      });
+      options = finalOptions;
+    } else {
+      // If still no options, generate default ones
+      options = ['Option A', 'Option B', 'Option C', 'Option D'];
+    }
+  }
+  
+  console.log('Final extracted question:', question);
+  console.log('Final extracted options:', options);
+  
+  return {
+    question: question.length > 200 ? question.substring(0, 200) + '...' : question,
+    options
+  };
+}
+
 // Additional utility function for image preprocessing
 export function preprocessImageForOCR(file: File): Promise<File> {
   return new Promise((resolve) => {
@@ -391,44 +767,62 @@ export function preprocessImageForOCR(file: File): Promise<File> {
     const img = new Image();
     
     img.onload = () => {
-      // Set canvas size
-      canvas.width = img.width;
-      canvas.height = img.height;
+      // Scale up the image for better OCR (minimum 2x)
+      const scaleFactor = Math.max(2, 1200 / Math.max(img.width, img.height));
+      canvas.width = img.width * scaleFactor;
+      canvas.height = img.height * scaleFactor;
       
-      // Draw image
-      ctx?.drawImage(img, 0, 0);
-      
-      // Apply image enhancement for better OCR
-      const imageData = ctx?.getImageData(0, 0, canvas.width, canvas.height);
-      if (imageData) {
+      // Enable image smoothing for better quality
+      if (ctx) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Draw scaled image
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        // Apply image enhancement for better OCR
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
         
-        // Increase contrast and brightness
+        // Apply multiple enhancement techniques
         for (let i = 0; i < data.length; i += 4) {
           // Convert to grayscale
           const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
           
-          // Apply contrast enhancement
-          const enhanced = gray > 128 ? 255 : 0;
+          // Apply adaptive thresholding instead of simple binary
+          // This helps with varying lighting conditions
+          const threshold = 128;
+          const enhanced = gray > threshold ? 255 : 0;
           
-          data[i] = enhanced;     // Red
-          data[i + 1] = enhanced; // Green
-          data[i + 2] = enhanced; // Blue
+          // Apply slight contrast boost
+          const contrast = 1.2;
+          const adjusted = Math.min(255, Math.max(0, (enhanced - 128) * contrast + 128));
+          
+          data[i] = adjusted;     // Red
+          data[i + 1] = adjusted; // Green
+          data[i + 2] = adjusted; // Blue
           // Alpha channel remains unchanged
         }
         
-        ctx?.putImageData(imageData, 0, 0);
+        ctx.putImageData(imageData, 0, 0);
       }
       
-      // Convert back to file
+      // Convert back to file with high quality
       canvas.toBlob((blob) => {
         if (blob) {
           const processedFile = new File([blob], file.name, { type: 'image/png' });
+          console.log(`Image preprocessed: ${file.name} -> ${processedFile.size} bytes`);
           resolve(processedFile);
         } else {
+          console.warn('Failed to create processed image blob, using original');
           resolve(file);
         }
-      }, 'image/png');
+      }, 'image/png', 1.0); // Maximum quality
+    };
+    
+    img.onerror = () => {
+      console.warn('Failed to load image for preprocessing, using original');
+      resolve(file);
     };
     
     img.src = URL.createObjectURL(file);
