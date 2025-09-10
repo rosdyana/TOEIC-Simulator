@@ -17,6 +17,7 @@
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.0.2",
     "class-variance-authority": "^0.7.0",
+    "cloudinary-react": "^1.8.1",
     "clsx": "^2.0.0",
     "lucide-react": "^0.294.0",
     "openai": "^5.20.0",

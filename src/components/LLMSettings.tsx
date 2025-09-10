@@ -42,6 +42,14 @@ export function LLMSettings() {
     setSettings(newSettings);
   };
 
+  const handleCloudinaryConfigChange = (field: keyof LLMSettings['cloudinary'], value: string) => {
+    const newSettings = {
+      ...settings,
+      cloudinary: { ...settings.cloudinary, [field]: value }
+    };
+    setSettings(newSettings);
+  };
+
   const handleSaveSettings = async () => {
     setIsSaving(true);
     try {
@@ -88,6 +96,7 @@ export function LLMSettings() {
   };
 
   const isConfigured = llmConfigManager.isConfigured();
+  const isCloudinaryConfigured = llmConfigManager.isCloudinaryConfigured();
 
   return (
     <div className="space-y-6">
@@ -108,23 +117,40 @@ export function LLMSettings() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2">
-            {isConfigured ? (
-              <>
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                <span className="text-green-700 font-medium">LLM is properly configured</span>
-              </>
-            ) : (
-              <>
-                <XCircle className="h-5 w-5 text-red-500" />
-                <span className="text-red-700 font-medium">LLM configuration is incomplete</span>
-              </>
-            )}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              {isConfigured ? (
+                <>
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <span className="text-green-700 font-medium">LLM is properly configured</span>
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-5 w-5 text-red-500" />
+                  <span className="text-red-700 font-medium">LLM configuration is incomplete</span>
+                </>
+              )}
+            </div>
+            
+        <div className="flex items-center gap-2">
+          {isCloudinaryConfigured ? (
+            <>
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              <span className="text-green-700 font-medium">File storage is configured</span>
+            </>
+          ) : (
+            <>
+              <XCircle className="h-5 w-5 text-red-500" />
+              <span className="text-red-700 font-medium">File storage configuration is incomplete</span>
+            </>
+          )}
+        </div>
           </div>
-          <p className="text-sm text-gray-600 mt-1">
-            {isConfigured 
-              ? 'You can now use AI-powered image recognition for extracting questions and answers.'
-              : 'Please configure at least one LLM provider to enable AI-powered features.'
+          
+          <p className="text-sm text-gray-600 mt-2">
+            {isConfigured && isCloudinaryConfigured
+              ? 'You can now use AI-powered image recognition and cloud file storage.'
+              : 'Please configure both LLM provider and file storage to enable all features.'
             }
           </p>
         </CardContent>
@@ -298,6 +324,79 @@ export function LLMSettings() {
         </Card>
       )}
 
+      {/* Cloudinary Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Key className="h-5 w-5" />
+            File Storage Configuration
+          </CardTitle>
+          <CardDescription>
+            Configure Cloudinary for cloud file storage
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="cloudinary-cloud-name">Cloud Name</Label>
+            <div className="relative">
+              <Input
+                id="cloudinary-cloud-name"
+                type={showApiKeys.cloudinary ? 'text' : 'password'}
+                value={settings.cloudinary.cloudName}
+                onChange={(e) => handleCloudinaryConfigChange('cloudName', e.target.value)}
+                placeholder="Enter your Cloudinary cloud name"
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3"
+                onClick={() => toggleApiKeyVisibility('cloudinary')}
+              >
+                {showApiKeys.cloudinary ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="cloudinary-upload-preset">Upload Preset</Label>
+            <div className="relative">
+              <Input
+                id="cloudinary-upload-preset"
+                type={showApiKeys.cloudinaryPreset ? 'text' : 'password'}
+                value={settings.cloudinary.uploadPreset}
+                onChange={(e) => handleCloudinaryConfigChange('uploadPreset', e.target.value)}
+                placeholder="Enter your Cloudinary upload preset"
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3"
+                onClick={() => toggleApiKeyVisibility('cloudinaryPreset')}
+              >
+                {showApiKeys.cloudinaryPreset ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              Get your settings from{' '}
+              <a href="https://cloudinary.com/console" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                Cloudinary Console
+              </a>
+            </p>
+          </div>
+          
+          <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+            <p className="font-medium mb-1">ℹ️ Setup Instructions</p>
+            <p>1. Create a Cloudinary account and get your Cloud Name</p>
+            <p>2. Create an unsigned upload preset in your Cloudinary console</p>
+            <p>3. Set the preset to "Unsigned" for client-side uploads</p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Test Connection */}
       <Card>
         <CardHeader>
@@ -318,6 +417,13 @@ export function LLMSettings() {
             >
               {isTesting ? 'Testing...' : 'Test LLM Connection'}
             </Button>
+            
+            {!isCloudinaryConfigured && (
+              <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                <p className="font-medium mb-1">⚠️ File Storage Not Configured</p>
+                <p>Please configure Cloudinary settings above to enable file uploads and cloud storage.</p>
+              </div>
+            )}
             
             {testResult && (
               <div className={`p-3 rounded-lg flex items-center gap-2 ${

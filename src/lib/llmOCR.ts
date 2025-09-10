@@ -300,7 +300,7 @@ Extract ALL visible question-answer pairs. If a question number is visible but t
     }
   }
 
-  async extractQuestionsFromImage(imageFile: File): Promise<LLMOCRResult> {
+  async extractQuestionsFromImage(imageFile: File, imageUrl?: string): Promise<LLMOCRResult> {
     try {
       this.updateConfig();
       
@@ -342,7 +342,7 @@ Extract ALL visible question-answer pairs. If a question number is visible but t
         id: q.questionNumber || index + 1,
         type: 'image',
         question: q.question,
-        image: URL.createObjectURL(imageFile),
+        image: imageUrl || URL.createObjectURL(imageFile),
         options: q.options,
         answer: q.answer || 'A'
       }));
@@ -432,7 +432,8 @@ Extract ALL visible question-answer pairs. If a question number is visible but t
   async parseTestFromImages(
     problemImages: File[],
     answerSheetImage: File,
-    title: string
+    title: string,
+    cloudinaryFiles?: any[] // CloudinaryFile[] - using any to avoid circular import
   ): Promise<Simulation> {
     try {
       console.log('Starting LLM-based test parsing...');
@@ -461,7 +462,8 @@ Extract ALL visible question-answer pairs. If a question number is visible but t
         console.log(`Processing problem image ${i + 1}/${problemImages.length}...`);
         
         const image = problemImages[i];
-        const result = await this.extractQuestionsFromImage(image);
+        const cloudinaryUrl = cloudinaryFiles?.[i]?.secureUrl;
+        const result = await this.extractQuestionsFromImage(image, cloudinaryUrl);
         
         if (result.success && result.questions) {
           // Add the correct answer from the answer sheet
@@ -478,7 +480,7 @@ Extract ALL visible question-answer pairs. If a question number is visible but t
             id: i + 1,
             type: 'image',
             question: `Question ${i + 1}: Please answer based on the content shown.`,
-            image: URL.createObjectURL(image),
+            image: cloudinaryUrl || URL.createObjectURL(image),
             options: ['Option A', 'Option B', 'Option C', 'Option D'],
             answer: answerMap.get(i + 1) || 'A'
           });

@@ -18,6 +18,10 @@ export interface LLMSettings {
     deploymentName: string;
     model: string;
   };
+  cloudinary: {
+    cloudName: string;
+    uploadPreset: string;
+  };
 }
 
 const DEFAULT_SETTINGS: LLMSettings = {
@@ -31,6 +35,10 @@ const DEFAULT_SETTINGS: LLMSettings = {
     endpoint: '',
     deploymentName: '',
     model: 'gpt-4o'
+  },
+  cloudinary: {
+    cloudName: '',
+    uploadPreset: ''
   }
 };
 
@@ -106,6 +114,14 @@ export class LLMConfigManager {
     } else {
       return !!(config.apiKey && config.endpoint && config.deploymentName);
     }
+  }
+
+  isCloudinaryConfigured(): boolean {
+    return !!(this.settings.cloudinary.cloudName && this.settings.cloudinary.uploadPreset);
+  }
+
+  getCloudinaryConfig(): { cloudName: string; uploadPreset: string } {
+    return { ...this.settings.cloudinary };
   }
 
   resetSettings(): void {

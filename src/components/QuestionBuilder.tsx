@@ -1,13 +1,15 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, X, Upload, Save, FileText, Image, FileImage, Grid3X3, Eye, Loader2 } from 'lucide-react';
+import { Plus, X, Save, FileText, Image, FileImage, Grid3X3, Eye, Loader2 } from 'lucide-react';
 import { Question, Document } from '@/types';
 import { llmOCRService } from '@/lib/llmOCR';
+import { CloudinaryFileUploader } from '@/components/CloudinaryFileUploader';
+import { CloudinaryFile } from '@/lib/cloudinaryStorage';
 
 interface QuestionBuilderProps {
   question?: Question;
@@ -38,9 +40,9 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
   });
 
   const [newInsertionPoint, setNewInsertionPoint] = useState({ position: 0, text: '' });
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isExtractingText, setIsExtractingText] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<CloudinaryFile | null>(null);
 
   const handleTypeChange = (type: Question['type']) => {
     setQuestionData(prev => ({
@@ -74,13 +76,15 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
     }
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const objectUrl = URL.createObjectURL(file);
-      setQuestionData(prev => ({ ...prev, image: objectUrl }));
-      setAiError(null); // Clear any previous errors
-    }
+  const handleImageUpload = (file: CloudinaryFile) => {
+    setUploadedImage(file);
+    setQuestionData(prev => ({ ...prev, image: file.secureUrl }));
+    setAiError(null); // Clear any previous errors
+  };
+
+  const handleImageRemove = () => {
+    setUploadedImage(null);
+    setQuestionData(prev => ({ ...prev, image: '' }));
   };
 
   const handleExtractTextFromImage = async () => {
@@ -103,10 +107,12 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
     setAiError(null);
 
     try {
-      // Convert the image URL back to a File object for AI processing
+      // Convert the Cloudinary image to a File object for AI processing
       const response = await fetch(questionData.image);
       const blob = await response.blob();
-      const file = new File([blob], 'question-image.png', { type: 'image/png' });
+      const file = new File([blob], uploadedImage?.name || 'question-image.png', { 
+        type: uploadedImage?.mimeType || 'image/png' 
+      });
 
       const result = await llmOCRService.extractQuestionsFromImage(file);
 
@@ -489,30 +495,13 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
             <div>
               <Label>Image Upload</Label>
               <div className="mt-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
+                <CloudinaryFileUploader
+                  onFileUploaded={handleImageUpload}
+                  onFileRemoved={handleImageRemove}
+                  acceptedTypes="image/*"
+                  maxSize={10}
+                  multiple={false}
                 />
-                <Button
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Image
-                </Button>
-                {questionData.image && (
-                  <div className="mt-2">
-                    <img
-                      src={questionData.image}
-                      alt="Question image"
-                      className="max-w-full h-32 object-contain border rounded"
-                    />
-                  </div>
-                )}
               </div>
             </div>
           )}

@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, X, Loader2, Info } from 'lucide-react';
+import { Loader2, Info } from 'lucide-react';
 import { llmOCRService } from '@/lib/llmOCR';
-import { validateImageFile } from '@/lib/ocrGuidelines';
 import { fileStorage } from '@/lib/fileStorage';
-import { Simulation, UploadedFile } from '@/types';
+import { Simulation } from '@/types';
+import { CloudinaryFileUploader } from '@/components/CloudinaryFileUploader';
+import { CloudinaryFile } from '@/lib/cloudinaryStorage';
 
 interface AnswerSheetUploadFormProps {
   onSimulationCreated: (simulation: Simulation) => void;
@@ -15,7 +16,7 @@ interface AnswerSheetUploadFormProps {
 
 export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUploadFormProps) {
   const [title, setTitle] = useState('');
-  const [answerSheet, setAnswerSheet] = useState<UploadedFile | null>(null);
+  const [answerSheet, setAnswerSheet] = useState<CloudinaryFile | null>(null);
   const [startNumber, setStartNumber] = useState(101);
   const [endNumber, setEndNumber] = useState(200);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -23,27 +24,13 @@ export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUpload
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualAnswers, setManualAnswers] = useState('');
 
-  const handleAnswerSheetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const validation = validateImageFile(file);
-      if (validation.valid) {
-        setAnswerSheet({
-          file,
-          preview: URL.createObjectURL(file)
-        });
-        setError(''); // Clear any previous errors
-      } else {
-        setError(validation.error || 'Invalid file');
-      }
-    }
+  const handleAnswerSheetUpload = (file: CloudinaryFile) => {
+    setAnswerSheet(file);
+    setError(''); // Clear any previous errors
   };
 
   const removeAnswerSheet = () => {
-    if (answerSheet) {
-      URL.revokeObjectURL(answerSheet.preview);
-      setAnswerSheet(null);
-    }
+    setAnswerSheet(null);
   };
 
   const createSimulationFromManualAnswers = () => {
@@ -137,8 +124,13 @@ export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUpload
     setError('');
 
     try {
+      // Convert Cloudinary file to File object for LLM processing
+      const response = await fetch(answerSheet.secureUrl);
+      const blob = await response.blob();
+      const file = new File([blob], answerSheet.name, { type: answerSheet.mimeType });
+
       const result = await llmOCRService.extractAnswerSheetFromImage(
-        answerSheet.file,
+        file,
         startNumber,
         endNumber
       );
@@ -157,11 +149,6 @@ export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUpload
 
       fileStorage.saveSimulation(simulation);
       onSimulationCreated(simulation);
-
-      // Clean up object URL
-      if (answerSheet) {
-        URL.revokeObjectURL(answerSheet.preview);
-      }
 
       // Reset form
       setTitle('');
@@ -229,47 +216,14 @@ export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUpload
       <div>
         <Label>Answer Sheet Image</Label>
         <div className="mt-2">
-          <div className="flex items-center justify-center w-full">
-            <label
-              htmlFor="answer-sheet"
-              className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"
-            >
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <Upload className="w-8 h-8 mb-4 text-gray-500" />
-                <p className="mb-2 text-sm text-gray-500">
-                  <span className="font-semibold">Click to upload</span> answer sheet
-                </p>
-                <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
-                <p className="text-xs text-blue-600 mt-1">AI can recognize various answer sheet formats</p>
-              </div>
-              <input
-                id="answer-sheet"
-                type="file"
-                className="hidden"
-                accept="image/*"
-                onChange={handleAnswerSheetUpload}
-              />
-            </label>
-          </div>
+          <CloudinaryFileUploader
+            onFileUploaded={handleAnswerSheetUpload}
+            onFileRemoved={removeAnswerSheet}
+            acceptedTypes="image/*"
+            maxSize={10}
+            multiple={false}
+          />
         </div>
-
-        {answerSheet && (
-          <div className="mt-4">
-            <div className="relative inline-block">
-              <img
-                src={answerSheet.preview}
-                alt="Answer sheet"
-                className="w-48 h-32 object-cover rounded-lg border"
-              />
-              <button
-                onClick={removeAnswerSheet}
-                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {error && (
