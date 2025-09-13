@@ -7,6 +7,7 @@ import { fileStorage } from '@/lib/fileStorage';
 import { Simulation, Question } from '@/types';
 import { QuestionBuilder } from '@/components/QuestionBuilder';
 import { LLMSettings } from '@/components/LLMSettings';
+import { ImageZoom } from '@/components/ui/image-zoom';
 
 export function AdminPage() {
   const [simulations, setSimulations] = useState<Simulation[]>([]);
@@ -384,7 +385,7 @@ export function AdminPage() {
                           
                           {question.image && (
                             <div className="mt-2">
-                              <img
+                              <ImageZoom
                                 src={question.image}
                                 alt={`Question ${question.id}`}
                                 className="w-32 h-20 object-cover rounded border"

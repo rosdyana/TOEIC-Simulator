@@ -7,6 +7,7 @@ import { llmOCRService } from '@/lib/llmOCR';
 import { fileStorage } from '@/lib/fileStorage';
 import { Simulation } from '@/types';
 import { CloudinaryFileUploader } from '@/components/CloudinaryFileUploader';
+import { ImageZoom } from '@/components/ui/image-zoom';
 import { CloudinaryFile } from '@/lib/cloudinaryStorage';
 
 interface UploadFormProps {
@@ -126,7 +127,7 @@ export function UploadForm({ onSimulationCreated }: UploadFormProps) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {problemImages.map((img, index) => (
                 <div key={index} className="relative">
-                  <img
+                  <ImageZoom
                     src={img.secureUrl}
                     alt={`Problem ${index + 1}`}
                     className="w-full h-24 object-cover rounded-lg border"

@@ -106,7 +106,8 @@ export function SimulationPage() {
     const answerRecords = simulation.questions.map(q => ({
       id: q.id,
       selected: answers[q.id] || '',
-      correct: q.answer
+      correct: q.answer,
+      options: q.options
     }));
 
     const score = calculateScore(answerRecords);

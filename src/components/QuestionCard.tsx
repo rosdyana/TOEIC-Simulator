@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { ImageZoom } from '@/components/ui/image-zoom';
 import { Question } from '@/types';
 
 interface QuestionCardProps {
@@ -26,7 +27,7 @@ export function QuestionCard({ question, selectedAnswer, onAnswerSelect }: Quest
         {/* Question Image */}
         {question.type === 'image' && question.image && (
           <div className="flex justify-center">
-            <img
+            <ImageZoom
               src={question.image}
               alt={`Question ${question.id}`}
               className="max-w-full h-auto rounded-lg shadow-md border"

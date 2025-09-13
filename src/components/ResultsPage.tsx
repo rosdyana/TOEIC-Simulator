@@ -22,11 +22,21 @@ export function ResultsPage({
   const answerRecords = simulation.questions.map(q => ({
     id: q.id,
     selected: answers[q.id] || '',
-    correct: q.answer
+    correct: q.answer,
+    options: q.options
   }));
 
   const score = calculateScore(answerRecords);
-  const correctAnswers = answerRecords.filter(a => a.selected === a.correct).length;
+  const correctAnswers = answerRecords.filter(a => {
+    // If we have options, convert selected text to letter index for comparison
+    if (a.options && a.options.length > 0) {
+      const selectedIndex = a.options.findIndex(option => option === a.selected);
+      const selectedLetter = selectedIndex >= 0 ? String.fromCharCode(65 + selectedIndex) : '';
+      return selectedLetter === a.correct;
+    }
+    // Fallback to direct comparison for backward compatibility
+    return a.selected === a.correct;
+  }).length;
   const totalQuestions = answerRecords.length;
 
   const getScoreColor = (score: number) => {
@@ -93,8 +103,46 @@ export function ResultsPage({
         <CardContent>
           <div className="space-y-4">
             {answerRecords.map((answer) => {
-              const isCorrect = answer.selected === answer.correct;
+              // Calculate if answer is correct using the same logic as scoring
+              const isCorrect = (() => {
+                if (answer.options && answer.options.length > 0) {
+                  const selectedIndex = answer.options.findIndex(option => option === answer.selected);
+                  const selectedLetter = selectedIndex >= 0 ? String.fromCharCode(65 + selectedIndex) : '';
+                  return selectedLetter === answer.correct;
+                }
+                return answer.selected === answer.correct;
+              })();
+              
               const question = simulation.questions.find(q => q.id === answer.id);
+              
+              // Get the selected answer letter and text for display
+              const getSelectedAnswerInfo = () => {
+                if (answer.options && answer.options.length > 0) {
+                  const selectedIndex = answer.options.findIndex(option => option === answer.selected);
+                  if (selectedIndex >= 0) {
+                    return {
+                      letter: String.fromCharCode(65 + selectedIndex),
+                      text: answer.selected
+                    };
+                  }
+                }
+                return {
+                  letter: 'No answer',
+                  text: answer.selected || 'No answer'
+                };
+              };
+
+              // Get the correct answer text for display
+              const getCorrectAnswerText = () => {
+                if (answer.options && answer.options.length > 0) {
+                  // Convert the correct letter (A, B, C, D) to index
+                  const correctIndex = answer.correct.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
+                  if (correctIndex >= 0 && correctIndex < answer.options.length) {
+                    return answer.options[correctIndex];
+                  }
+                }
+                return answer.correct;
+              };
               
               return (
                 <div
@@ -122,13 +170,20 @@ export function ResultsPage({
                         <div className="text-sm">
                           <span className="font-medium">Your answer:</span>{' '}
                           <span className={isCorrect ? 'text-green-600' : 'text-red-600'}>
-                            {answer.selected || 'No answer'}
+                            {(() => {
+                              const selectedInfo = getSelectedAnswerInfo();
+                              return selectedInfo.letter !== 'No answer' 
+                                ? `${selectedInfo.letter} - ${selectedInfo.text}`
+                                : selectedInfo.letter;
+                            })()}
                           </span>
                         </div>
                         {!isCorrect && (
                           <div className="text-sm">
                             <span className="font-medium">Correct answer:</span>{' '}
-                            <span className="text-green-600">{answer.correct}</span>
+                            <span className="text-green-600">
+                              {answer.correct} - {getCorrectAnswerText()}
+                            </span>
                           </div>
                         )}
                       </div>
