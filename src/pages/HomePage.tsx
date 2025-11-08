@@ -3,18 +3,21 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Play, Plus, Clock, Users, Settings, FileText, Image, Upload, Link as LinkIcon } from 'lucide-react';
+import { Play, Plus, Clock, Users, Settings, FileText, Image, Upload, Link as LinkIcon, Sparkles } from 'lucide-react';
 import { fileStorage } from '@/lib/fileStorage';
 import { Simulation } from '@/types';
 import { UploadForm } from '@/components/UploadForm';
 import { AnswerSheetUploadForm } from '@/components/AnswerSheetUploadForm';
 import { QuestionTypeDemo } from '@/components/QuestionTypeDemo';
+import { AIGenerateDialog } from '@/components/AIGenerateDialog';
+import { llmOCRService } from '@/lib/llmOCR';
 
 export function HomePage() {
   const [simulations, setSimulations] = useState<Simulation[]>([]);
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [showAnswerSheetForm, setShowAnswerSheetForm] = useState(false);
   const [showImportForm, setShowImportForm] = useState(false);
+  const [showAIGenerateDialog, setShowAIGenerateDialog] = useState(false);
   const [importUrl, setImportUrl] = useState('');
   const [isImporting, setIsImporting] = useState(false);
 
@@ -29,6 +32,35 @@ export function HomePage() {
     setShowUploadForm(false);
     setShowAnswerSheetForm(false);
     setShowImportForm(false);
+    setShowAIGenerateDialog(false);
+  };
+
+  const handleAIGenerate = async (count: number) => {
+    try {
+      // The system will automatically fill missing questions
+      const questions = await llmOCRService.generateReadingQuestions(count);
+      
+      // Show a message if we got fewer than requested (after retries)
+      if (questions.length < count) {
+        const missing = count - questions.length;
+        alert(
+          `Generated ${questions.length} out of ${count} requested questions.\n` +
+          `${missing} questions could not be generated after multiple attempts.\n\n` +
+          `The simulation will be created with ${questions.length} questions.`
+        );
+      } else {
+        alert(`Successfully generated all ${count} reading comprehension questions!`);
+      }
+      
+      const simulation = await fileStorage.createSimulation(
+        `AI Generated TOEIC Reading Test (${questions.length} questions)`,
+        questions
+      );
+      handleSimulationCreated(simulation);
+    } catch (error) {
+      console.error('Failed to generate questions:', error);
+      throw error;
+    }
   };
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,6 +126,28 @@ export function HomePage() {
 
       {/* Action Cards - Row 1: Main Actions */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Sparkles className="h-6 w-6 text-purple-600" />
+              <span>Generate by AI</span>
+            </CardTitle>
+            <CardDescription>
+              Create TOEIC reading comprehension questions automatically using AI
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <Sparkles className="h-12 w-12 mx-auto mb-4 text-purple-600" />
+              <p className="mb-4">Generate authentic TOEIC reading questions</p>
+              <Button onClick={() => setShowAIGenerateDialog(true)}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Generate Questions
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -167,7 +221,10 @@ export function HomePage() {
             )}
           </CardContent>
         </Card>
+      </div>
 
+      {/* Action Cards - Row 2: Advanced Actions */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -192,10 +249,6 @@ export function HomePage() {
             )}
           </CardContent>
         </Card>
-      </div>
-
-      {/* Action Cards - Row 2: Advanced Actions */}
-      <div className="grid md:grid-cols-2 gap-6">
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -334,6 +387,13 @@ export function HomePage() {
 
       {/* Question Types Demo */}
       <QuestionTypeDemo />
+
+      {/* AI Generate Dialog */}
+      <AIGenerateDialog
+        isOpen={showAIGenerateDialog}
+        onClose={() => setShowAIGenerateDialog(false)}
+        onGenerate={handleAIGenerate}
+      />
     </div>
   );
 }

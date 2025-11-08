@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  toeic-simulation:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: toeic-simulation
+    # Use custom port for reverse proxy (Caddy)
+    # Change 8080 to any available port if needed
+    ports:
+      - "${TOEIC_PORT:-8080}:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    # Expose port for internal networking (for Caddy)
+    expose:
+      - "80"
+    labels:
+      - "com.toeic-simulation.description=TOEIC Test Simulator"
+      - "com.toeic-simulation.version=1.0.0"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    # Network configuration for Caddy reverse proxy
+    # Uncomment if Caddy is in Docker and using caddy-network
+    # networks:
+    #   - caddy-network
+
+# Uncomment if using Docker network with Caddy
+# networks:
+#   caddy-network:
+#     external: true
+

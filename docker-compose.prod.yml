@@ -1,0 +1,28 @@
+version: '3.8'
+
+# Production override for docker-compose.yml
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  toeic-simulation:
+    # Override port for production (use environment variable)
+    ports:
+      - "${TOEIC_PORT:-8080}:80"
+    
+    # Optional: Add resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    
+    # Optional: Add logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+

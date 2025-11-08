@@ -19,6 +19,16 @@ export function QuestionCard({ question, selectedAnswer, onAnswerSelect }: Quest
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Reading Passage */}
+        {question.type === 'reading' && question.passage && (
+          <div className="bg-gray-50 border rounded-lg p-4 mb-4">
+            <Label className="text-sm font-semibold text-gray-700 mb-2 block">Reading Passage:</Label>
+            <div className="prose max-w-none">
+              <p className="text-base leading-relaxed whitespace-pre-wrap">{question.passage}</p>
+            </div>
+          </div>
+        )}
+
         {/* Question Text */}
         <div className="prose max-w-none">
           <p className="text-lg leading-relaxed">{question.question}</p>

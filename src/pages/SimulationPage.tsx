@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Clock, ArrowLeft, ArrowRight, CheckCircle, Pause, Play } from 'lucide-r
 import { fileStorage } from '@/lib/fileStorage';
 import { storage } from '@/lib/storage';
 import { Simulation, StatsRecord } from '@/types';
-import { formatTime, calculateScore } from '@/lib/utils';
+import { formatTime, calculateScore, calculateTOEICTimeLimit, isReadingOnlyTest } from '@/lib/utils';
 import { QuestionCard } from '@/components/QuestionCard';
 import { ResultsPage } from '@/components/ResultsPage';
 
@@ -17,7 +17,8 @@ export function SimulationPage() {
   const [simulation, setSimulation] = useState<Simulation | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<{ [key: number]: string }>({});
-  const [timeElapsed, setTimeElapsed] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [timeLimit, setTimeLimit] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -29,14 +30,24 @@ export function SimulationPage() {
       if (sim) {
         setSimulation(sim);
         
+        // Calculate time limit based on TOEIC rules
+        const readingOnly = isReadingOnlyTest(sim.questions);
+        const limit = calculateTOEICTimeLimit(sim.questions.length, readingOnly);
+        setTimeLimit(limit);
+        
         // Try to load saved session
         const savedSession = fileStorage.getSession(id);
         if (savedSession) {
           setCurrentQuestion(savedSession.currentQuestion);
           setAnswers(savedSession.answers);
-          setTimeElapsed(savedSession.timeElapsed);
+          // Convert timeElapsed to timeRemaining
+          const elapsed = savedSession.timeElapsed || 0;
+          setTimeRemaining(Math.max(0, limit - elapsed));
           setIsPaused(savedSession.isPaused);
           setSessionSaved(true);
+        } else {
+          // Start with full time limit
+          setTimeRemaining(limit);
         }
       } else {
         navigate('/');
@@ -45,14 +56,22 @@ export function SimulationPage() {
   }, [id, navigate]);
 
   useEffect(() => {
-    if (!simulation || isCompleted || isPaused) return;
+    if (!simulation || isCompleted || isPaused || timeRemaining <= 0) return;
 
     const timer = setInterval(() => {
-      setTimeElapsed(prev => prev + 1);
+      setTimeRemaining(prev => {
+        const newTime = prev - 1;
+        if (newTime <= 0) {
+          // Time's up - auto submit
+          handleSubmit();
+          return 0;
+        }
+        return newTime;
+      });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [simulation, isCompleted, isPaused]);
+  }, [simulation, isCompleted, isPaused, timeRemaining, handleSubmit]);
 
   const handleAnswerSelect = (questionId: number, answer: string) => {
     setAnswers(prev => ({
@@ -72,6 +91,9 @@ export function SimulationPage() {
 
   const saveSession = () => {
     if (!simulation) return;
+    
+    // Calculate elapsed time from remaining time
+    const timeElapsed = timeLimit - timeRemaining;
     
     const sessionData = {
       simulationId: simulation.id,
@@ -100,7 +122,7 @@ export function SimulationPage() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (!simulation) return;
 
     const answerRecords = simulation.questions.map(q => ({
@@ -112,6 +134,9 @@ export function SimulationPage() {
 
     const score = calculateScore(answerRecords);
 
+    // Calculate elapsed time from remaining time
+    const timeElapsed = timeLimit - timeRemaining;
+    
     const statsRecord: StatsRecord = {
       simulationId: simulation.id,
       score,
@@ -124,7 +149,7 @@ export function SimulationPage() {
     fileStorage.clearSession(simulation.id); // Clear saved session after completion
     setIsCompleted(true);
     setShowResults(true);
-  };
+  }, [simulation, answers, timeLimit, timeRemaining]);
 
   if (!simulation) {
     return (
@@ -138,6 +163,7 @@ export function SimulationPage() {
   }
 
   if (showResults) {
+    const timeElapsed = timeLimit - timeRemaining;
     return (
       <ResultsPage
         simulation={simulation}
@@ -146,7 +172,7 @@ export function SimulationPage() {
         onRetake={() => {
           setCurrentQuestion(0);
           setAnswers({});
-          setTimeElapsed(0);
+          setTimeRemaining(timeLimit);
           setIsCompleted(false);
           setShowResults(false);
         }}
@@ -171,11 +197,19 @@ export function SimulationPage() {
               </p>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-lg font-mono">
+              <div className={`flex items-center space-x-2 text-lg font-mono ${
+                timeRemaining <= 300 ? 'text-red-600 font-bold' : 
+                timeRemaining <= 600 ? 'text-orange-600' : ''
+              }`}>
                 <Clock className="h-5 w-5" />
-                <span>{formatTime(timeElapsed)}</span>
+                <span>{formatTime(timeRemaining)}</span>
                 {isPaused && <span className="text-orange-600 text-sm">(Paused)</span>}
               </div>
+              {timeRemaining <= 0 && (
+                <div className="text-sm text-red-600 bg-red-50 px-2 py-1 rounded font-semibold">
+                  Time's Up!
+                </div>
+              )}
               {sessionSaved && (
                 <div className="text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
                   Session Saved
@@ -183,7 +217,13 @@ export function SimulationPage() {
               )}
             </div>
           </div>
-          <Progress value={progress} className="mt-4" />
+          <div className="mt-4 space-y-2">
+            <Progress value={progress} />
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>Progress: {currentQuestion + 1} / {simulation.questions.length}</span>
+              <span>Time: {formatTime(timeRemaining)} / {formatTime(timeLimit)}</span>
+            </div>
+          </div>
         </CardHeader>
       </Card>
 
