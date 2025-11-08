@@ -49,8 +49,8 @@ export function AIGenerateDialog({ isOpen, onClose, onGenerate }: AIGenerateDial
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-md">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+      <Card className="w-full max-w-md mx-2 sm:mx-4 my-4">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -98,19 +98,19 @@ export function AIGenerateDialog({ isOpen, onClose, onGenerate }: AIGenerateDial
             </div>
           )}
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <Button
               variant="outline"
               onClick={handleClose}
               disabled={isGenerating}
-              className="flex-1"
+              className="flex-1 w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               onClick={handleGenerate}
               disabled={isGenerating || !problemCount}
-              className="flex-1"
+              className="flex-1 w-full sm:w-auto"
             >
               {isGenerating ? (
                 <>

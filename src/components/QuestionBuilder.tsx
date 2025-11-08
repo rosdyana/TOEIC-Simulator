@@ -401,7 +401,7 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
 
                 <Card className="p-4 border-dashed">
                   <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <Label htmlFor="doc-title">Document Title</Label>
                         <Input
@@ -566,12 +566,12 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
           )}
 
           {/* Action Buttons */}
-          <div className="flex space-x-4 pt-4">
-            <Button onClick={handleSave} className="flex-1">
+          <div className="flex flex-col sm:flex-row gap-3 sm:space-x-4 pt-4">
+            <Button onClick={handleSave} className="flex-1 w-full sm:w-auto">
               <Save className="h-4 w-4 mr-2" />
               Save Question
             </Button>
-            <Button variant="outline" onClick={onCancel} className="flex-1">
+            <Button variant="outline" onClick={onCancel} className="flex-1 w-full sm:w-auto">
               <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>

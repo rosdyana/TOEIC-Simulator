@@ -54,25 +54,25 @@ export function ResultsPage({
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
       {/* Score Summary */}
       <Card className="text-center">
         <CardHeader>
-          <div className="flex justify-center mb-4">
-            <div className={`p-4 rounded-full ${score >= 80 ? 'bg-green-100' : score >= 60 ? 'bg-yellow-100' : 'bg-red-100'}`}>
-              <Trophy className={`h-12 w-12 ${getScoreColor(score)}`} />
+          <div className="flex justify-center mb-3 sm:mb-4">
+            <div className={`p-3 sm:p-4 rounded-full ${score >= 80 ? 'bg-green-100' : score >= 60 ? 'bg-yellow-100' : 'bg-red-100'}`}>
+              <Trophy className={`h-8 w-8 sm:h-12 sm:w-12 ${getScoreColor(score)}`} />
             </div>
           </div>
-          <CardTitle className="text-3xl mb-2">Test Completed!</CardTitle>
-          <div className={`text-4xl font-bold ${getScoreColor(score)}`}>
+          <CardTitle className="text-2xl sm:text-3xl mb-2">Test Completed!</CardTitle>
+          <div className={`text-3xl sm:text-4xl font-bold ${getScoreColor(score)}`}>
             {score}%
           </div>
-          <p className="text-lg text-gray-600 mt-2">
+          <p className="text-base sm:text-lg text-gray-600 mt-2 px-4">
             {getScoreMessage(score)}
           </p>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 sm:mt-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
                 {correctAnswers}
@@ -198,13 +198,13 @@ export function ResultsPage({
 
       {/* Action Buttons */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button onClick={onRetake} variant="outline" size="lg">
+        <CardContent className="pt-4 sm:pt-6">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+            <Button onClick={onRetake} variant="outline" size="lg" className="w-full sm:w-auto">
               <RotateCcw className="h-4 w-4 mr-2" />
               Retake Test
             </Button>
-            <Button onClick={onGoHome} size="lg">
+            <Button onClick={onGoHome} size="lg" className="w-full sm:w-auto">
               <Home className="h-4 w-4 mr-2" />
               Back to Home
             </Button>

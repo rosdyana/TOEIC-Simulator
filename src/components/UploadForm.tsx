@@ -164,11 +164,11 @@ export function UploadForm({ onSimulationCreated }: UploadFormProps) {
         </div>
       )}
 
-      <div className="flex space-x-4">
+      <div className="flex flex-col sm:flex-row gap-3 sm:space-x-4">
         <Button
           onClick={handleSubmit}
           disabled={isProcessing || !title || problemImages.length === 0 || !answerSheet}
-          className="flex-1"
+          className="flex-1 w-full sm:w-auto"
         >
           {isProcessing ? (
             <>
@@ -187,6 +187,7 @@ export function UploadForm({ onSimulationCreated }: UploadFormProps) {
             setAnswerSheet(null);
             setError('');
           }}
+          className="w-full sm:w-auto"
         >
           Reset
         </Button>

@@ -159,10 +159,10 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings Panel</h1>
-        <p className="text-gray-600">Create and manage complex TOEIC simulations with multiple question types</p>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="text-center px-2">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Settings Panel</h1>
+        <p className="text-sm sm:text-base text-gray-600">Create and manage complex TOEIC simulations with multiple question types</p>
       </div>
 
       {/* Tab Navigation */}
@@ -196,28 +196,30 @@ export function SettingsPage() {
           {isCreatingSimulation && (
             <Card>
               <CardHeader>
-                <CardTitle>Create New Simulation</CardTitle>
+                <CardTitle className="text-lg sm:text-xl">Create New Simulation</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <Input
                     value={newSimulationTitle}
                     onChange={(e) => setNewSimulationTitle(e.target.value)}
                     placeholder="Enter simulation title..."
                     className="flex-1"
                   />
-                  <Button onClick={handleCreateSimulation} disabled={!newSimulationTitle.trim()}>
-                    Create
-                  </Button>
-                  <Button variant="outline" onClick={() => setIsCreatingSimulation(false)}>
-                    Cancel
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={handleCreateSimulation} disabled={!newSimulationTitle.trim()} className="flex-1 sm:flex-none">
+                      Create
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsCreatingSimulation(false)} className="flex-1 sm:flex-none">
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Simulations List */}
             <div className="lg:col-span-1">
               <Card>
@@ -425,8 +427,8 @@ export function SettingsPage() {
 
       {/* Question Builder Modal */}
       {isEditing && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+          <div className="w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto my-4">
             <QuestionBuilder
               question={editingQuestion || undefined}
               onSave={handleSaveQuestion}

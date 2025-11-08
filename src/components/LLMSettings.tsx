@@ -99,13 +99,13 @@ export function LLMSettings() {
   const isCloudinaryConfigured = llmConfigManager.isCloudinaryConfigured();
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
-          <Settings className="h-6 w-6" />
+    <div className="space-y-4 sm:space-y-6">
+      <div className="text-center px-2">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
+          <Settings className="h-5 w-5 sm:h-6 sm:w-6" />
           LLM Settings
         </h2>
-        <p className="text-gray-600">Configure AI models for image-based question extraction</p>
+        <p className="text-sm sm:text-base text-gray-600">Configure AI models for image-based question extraction</p>
       </div>
 
       {/* Status Card */}
@@ -454,11 +454,11 @@ export function LLMSettings() {
       </Card>
 
       {/* Save Settings */}
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
         <Button
           onClick={handleSaveSettings}
           disabled={isSaving}
-          className="flex-1"
+          className="flex-1 w-full sm:w-auto"
         >
           {isSaving ? 'Saving...' : 'Save Settings'}
         </Button>
@@ -468,6 +468,7 @@ export function LLMSettings() {
             llmConfigManager.resetSettings();
             setSettings(llmConfigManager.getSettings());
           }}
+          className="w-full sm:w-auto"
         >
           Reset to Defaults
         </Button>

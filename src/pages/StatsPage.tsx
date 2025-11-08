@@ -89,22 +89,22 @@ export function StatsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Statistics</h1>
-        <p className="text-gray-600">Track your progress and performance</p>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="text-center px-2">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Statistics</h1>
+        <p className="text-sm sm:text-base text-gray-600">Track your progress and performance</p>
       </div>
 
       {/* Filter */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+        <CardContent className="pt-4 sm:pt-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-4">
               <label className="text-sm font-medium">Filter by simulation:</label>
               <select
                 value={selectedSimulation}
                 onChange={(e) => setSelectedSimulation(e.target.value)}
-                className="px-3 py-1 border rounded-md"
+                className="px-3 py-2 border rounded-md text-sm w-full sm:w-auto"
               >
                 <option value="all">All Simulations</option>
                 {simulations.map(simulation => (
@@ -115,7 +115,7 @@ export function StatsPage() {
               </select>
             </div>
             {stats.length > 0 && (
-              <Button variant="outline" onClick={handleClearStats}>
+              <Button variant="outline" onClick={handleClearStats} className="w-full sm:w-auto">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Clear All Stats
               </Button>
@@ -135,7 +135,7 @@ export function StatsPage() {
       ) : (
         <>
           {/* Summary Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center">
@@ -188,15 +188,16 @@ export function StatsPage() {
           </div>
 
           {/* Charts */}
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <Card>
               <CardHeader>
                 <CardTitle>Score Progress</CardTitle>
                 <CardDescription>Your scores over time</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={getChartData()}>
+                <div className="w-full" style={{ height: '250px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={getChartData()}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="attempt" />
                     <YAxis domain={[0, 100]} />
@@ -212,7 +213,8 @@ export function StatsPage() {
                       dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
                     />
                   </LineChart>
-                </ResponsiveContainer>
+                  </ResponsiveContainer>
+                </div>
               </CardContent>
             </Card>
 
@@ -222,15 +224,17 @@ export function StatsPage() {
                 <CardDescription>Distribution of your scores</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={getScoreDistribution()}>
+                <div className="w-full" style={{ height: '250px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={getScoreDistribution()}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="range" />
                     <YAxis />
                     <Tooltip />
                     <Bar dataKey="count" fill="#10b981" />
                   </BarChart>
-                </ResponsiveContainer>
+                  </ResponsiveContainer>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -249,15 +253,15 @@ export function StatsPage() {
                   .map((stat, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg hover:bg-gray-50 gap-3 sm:gap-0"
                     >
-                      <div className="flex-1">
-                        <h3 className="font-medium">{getSimulationTitle(stat.simulationId)}</h3>
-                        <p className="text-sm text-gray-500">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-sm sm:text-base truncate">{getSimulationTitle(stat.simulationId)}</h3>
+                        <p className="text-xs sm:text-sm text-gray-500">
                           {new Date(stat.date).toLocaleDateString()} at {new Date(stat.date).toLocaleTimeString()}
                         </p>
                       </div>
-                      <div className="flex items-center space-x-6">
+                      <div className="flex items-center justify-between sm:justify-end space-x-4 sm:space-x-6">
                         <div className="text-center">
                           <div className={`text-lg font-bold ${
                             stat.score >= 80 ? 'text-green-600' : 

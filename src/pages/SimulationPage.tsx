@@ -55,6 +55,54 @@ export function SimulationPage() {
     }
   }, [id, navigate]);
 
+  const saveSession = () => {
+    if (!simulation) return;
+    
+    // Calculate elapsed time from remaining time
+    const timeElapsed = timeLimit - timeRemaining;
+    
+    const sessionData = {
+      simulationId: simulation.id,
+      currentQuestion,
+      answers,
+      timeElapsed,
+      isPaused,
+      savedAt: new Date().toISOString()
+    };
+    
+    fileStorage.saveSession(sessionData);
+    setSessionSaved(true);
+  };
+
+  const handleSubmit = useCallback(() => {
+    if (!simulation) return;
+
+    const answerRecords = simulation.questions.map(q => ({
+      id: q.id,
+      selected: answers[q.id] || '',
+      correct: q.answer,
+      options: q.options
+    }));
+
+    const score = calculateScore(answerRecords);
+
+    // Calculate elapsed time from remaining time
+    const timeElapsed = timeLimit - timeRemaining;
+    
+    const statsRecord: StatsRecord = {
+      simulationId: simulation.id,
+      score,
+      timeSpent: formatTime(timeElapsed),
+      date: new Date().toISOString(),
+      answers: answerRecords
+    };
+
+    storage.saveStats(statsRecord);
+    fileStorage.clearSession(simulation.id); // Clear saved session after completion
+    setIsCompleted(true);
+    setShowResults(true);
+  }, [simulation, answers, timeLimit, timeRemaining]);
+
   useEffect(() => {
     if (!simulation || isCompleted || isPaused || timeRemaining <= 0) return;
 
@@ -89,25 +137,6 @@ export function SimulationPage() {
     setIsPaused(false);
   };
 
-  const saveSession = () => {
-    if (!simulation) return;
-    
-    // Calculate elapsed time from remaining time
-    const timeElapsed = timeLimit - timeRemaining;
-    
-    const sessionData = {
-      simulationId: simulation.id,
-      currentQuestion,
-      answers,
-      timeElapsed,
-      isPaused,
-      savedAt: new Date().toISOString()
-    };
-    
-    fileStorage.saveSession(sessionData);
-    setSessionSaved(true);
-  };
-
   const handleNext = () => {
     if (simulation && currentQuestion < simulation.questions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
@@ -121,35 +150,6 @@ export function SimulationPage() {
       setCurrentQuestion(prev => prev - 1);
     }
   };
-
-  const handleSubmit = useCallback(() => {
-    if (!simulation) return;
-
-    const answerRecords = simulation.questions.map(q => ({
-      id: q.id,
-      selected: answers[q.id] || '',
-      correct: q.answer,
-      options: q.options
-    }));
-
-    const score = calculateScore(answerRecords);
-
-    // Calculate elapsed time from remaining time
-    const timeElapsed = timeLimit - timeRemaining;
-    
-    const statsRecord: StatsRecord = {
-      simulationId: simulation.id,
-      score,
-      timeSpent: formatTime(timeElapsed),
-      date: new Date().toISOString(),
-      answers: answerRecords
-    };
-
-    storage.saveStats(statsRecord);
-    fileStorage.clearSession(simulation.id); // Clear saved session after completion
-    setIsCompleted(true);
-    setShowResults(true);
-  }, [simulation, answers, timeLimit, timeRemaining]);
 
   if (!simulation) {
     return (
@@ -185,33 +185,33 @@ export function SimulationPage() {
   const progress = ((currentQuestion + 1) / simulation.questions.length) * 100;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl">{simulation.title}</CardTitle>
-              <p className="text-gray-600 mt-1">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-xl sm:text-2xl truncate">{simulation.title}</CardTitle>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">
                 Question {currentQuestion + 1} of {simulation.questions.length}
               </p>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className={`flex items-center space-x-2 text-lg font-mono ${
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:space-x-4">
+              <div className={`flex items-center space-x-2 text-base sm:text-lg font-mono ${
                 timeRemaining <= 300 ? 'text-red-600 font-bold' : 
                 timeRemaining <= 600 ? 'text-orange-600' : ''
               }`}>
-                <Clock className="h-5 w-5" />
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span>{formatTime(timeRemaining)}</span>
-                {isPaused && <span className="text-orange-600 text-sm">(Paused)</span>}
+                {isPaused && <span className="text-orange-600 text-xs sm:text-sm ml-1">(Paused)</span>}
               </div>
               {timeRemaining <= 0 && (
-                <div className="text-sm text-red-600 bg-red-50 px-2 py-1 rounded font-semibold">
+                <div className="text-xs sm:text-sm text-red-600 bg-red-50 px-2 py-1 rounded font-semibold">
                   Time's Up!
                 </div>
               )}
               {sessionSaved && (
-                <div className="text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
+                <div className="text-xs sm:text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
                   Session Saved
                 </div>
               )}
@@ -219,7 +219,7 @@ export function SimulationPage() {
           </div>
           <div className="mt-4 space-y-2">
             <Progress value={progress} />
-            <div className="flex justify-between text-xs text-gray-500">
+            <div className="flex flex-col xs:flex-row justify-between gap-1 text-xs text-gray-500">
               <span>Progress: {currentQuestion + 1} / {simulation.questions.length}</span>
               <span>Time: {formatTime(timeRemaining)} / {formatTime(timeLimit)}</span>
             </div>
@@ -236,31 +236,32 @@ export function SimulationPage() {
 
       {/* Navigation */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
+        <CardContent className="pt-4 sm:pt-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Button
               variant="outline"
               onClick={handlePrevious}
               disabled={currentQuestion === 0}
+              className="w-full sm:w-auto"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Previous
             </Button>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:space-x-4">
               {isPaused ? (
-                <Button onClick={handleResume} variant="outline">
+                <Button onClick={handleResume} variant="outline" className="w-full sm:w-auto">
                   <Play className="h-4 w-4 mr-2" />
                   Resume
                 </Button>
               ) : (
-                <Button onClick={handlePause} variant="outline">
+                <Button onClick={handlePause} variant="outline" className="w-full sm:w-auto">
                   <Pause className="h-4 w-4 mr-2" />
                   Pause & Save
                 </Button>
               )}
               
-              <Button onClick={saveSession} variant="outline" size="sm">
+              <Button onClick={saveSession} variant="outline" size="sm" className="w-full sm:w-auto">
                 Save Progress
               </Button>
             </div>
@@ -268,6 +269,7 @@ export function SimulationPage() {
             <Button
               onClick={handleNext}
               disabled={!answers[question.id]}
+              className="w-full sm:w-auto"
             >
               {currentQuestion === simulation.questions.length - 1 ? (
                 <>

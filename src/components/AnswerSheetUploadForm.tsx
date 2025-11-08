@@ -186,7 +186,7 @@ export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUpload
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <Label htmlFor="startNumber">Start Question Number</Label>
           <Input
@@ -267,11 +267,11 @@ export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUpload
         )}
       </div>
 
-      <div className="flex space-x-4">
+      <div className="flex flex-col sm:flex-row gap-3 sm:space-x-4">
         <Button
           onClick={handleSubmit}
           disabled={isProcessing || !title || (!answerSheet && !showManualInput) || (showManualInput && !manualAnswers)}
-          className="flex-1"
+          className="flex-1 w-full sm:w-auto"
         >
           {isProcessing ? (
             <>
@@ -295,6 +295,7 @@ export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUpload
             setShowManualInput(false);
             setManualAnswers('');
           }}
+          className="w-full sm:w-auto"
         >
           Reset
         </Button>
