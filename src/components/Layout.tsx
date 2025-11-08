@@ -13,7 +13,7 @@ export function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { path: '/', label: 'Home', icon: Home },
-    { path: '/admin', label: 'Admin', icon: Settings },
+    { path: '/settings', label: 'Settings', icon: Settings },
     { path: '/stats', label: 'Stats', icon: BarChart3 },
   ];
 
@@ -28,12 +28,12 @@ export function Layout({ children }: LayoutProps) {
                 <span className="text-xl font-bold text-gray-900">TOEIC Simulator</span>
               </Link>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
-                
+
                 return (
                   <Link key={item.path} to={item.path}>
                     <Button

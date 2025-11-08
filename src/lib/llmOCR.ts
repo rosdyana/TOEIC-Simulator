@@ -245,7 +245,7 @@ Extract ALL visible question-answer pairs. If a question number is visible but t
       if (!llmConfigManager.isConfigured()) {
         return {
           success: false,
-          error: 'LLM configuration is incomplete. Please configure API keys in admin settings.'
+          error: 'LLM configuration is incomplete. Please configure API keys in settings.'
         };
       }
 
@@ -307,7 +307,7 @@ Extract ALL visible question-answer pairs. If a question number is visible but t
       if (!llmConfigManager.isConfigured()) {
         return {
           success: false,
-          error: 'LLM configuration is incomplete. Please configure API keys in admin settings.'
+          error: 'LLM configuration is incomplete. Please configure API keys in settings.'
         };
       }
 
@@ -371,7 +371,7 @@ Extract ALL visible question-answer pairs. If a question number is visible but t
       if (!llmConfigManager.isConfigured()) {
         return {
           success: false,
-          error: 'LLM configuration is incomplete. Please configure API keys in admin settings.'
+          error: 'LLM configuration is incomplete. Please configure API keys in settings.'
         };
       }
 
@@ -513,7 +513,7 @@ Extract ALL visible question-answer pairs. If a question number is visible but t
       this.updateConfig();
 
       if (!llmConfigManager.isConfigured()) {
-        throw new Error('LLM configuration is incomplete. Please configure API keys in admin settings.');
+        throw new Error('LLM configuration is incomplete. Please configure API keys in settings.');
       }
 
       // For large counts, generate in batches to avoid token limits

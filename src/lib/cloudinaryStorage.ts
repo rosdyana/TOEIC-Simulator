@@ -28,9 +28,9 @@ export class CloudinaryStorageService {
 
   async uploadFile(file: File): Promise<CloudinaryFile> {
     this.updateConfig();
-    
+
     if (!this.isConfigured()) {
-      throw new Error('Cloudinary is not configured. Please configure your Cloudinary settings in admin settings.');
+      throw new Error('Cloudinary is not configured. Please configure your Cloudinary settings in settings.');
     }
 
     const formData = new FormData();
@@ -50,7 +50,7 @@ export class CloudinaryStorageService {
       }
 
       const result = await response.json();
-      
+
       return {
         publicId: result.public_id,
         secureUrl: result.secure_url,
@@ -80,16 +80,16 @@ export class CloudinaryStorageService {
     format?: 'auto' | 'webp' | 'jpg' | 'png';
   } = {}): string {
     const { width, height, quality = 'auto', format = 'auto' } = options;
-    
+
     let transformations = '';
     if (width) transformations += `w_${width},`;
     if (height) transformations += `h_${height},`;
     if (quality) transformations += `q_${quality},`;
     if (format) transformations += `f_${format},`;
-    
+
     // Remove trailing comma
     transformations = transformations.replace(/,$/, '');
-    
+
     return this.getFileUrl(publicId, transformations);
   }
 }

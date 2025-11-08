@@ -53,7 +53,7 @@ export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUpload
       // Parse manual answers (expecting format like "101 B, 102 D, 103 C" or "B D C A B...")
       const answers = manualAnswers.trim().split(/[,\s]+/).filter(answer => answer.trim());
       const totalQuestions = endNumber - startNumber + 1;
-      
+
       if (answers.length !== totalQuestions) {
         setError(`Expected ${totalQuestions} answers, but got ${answers.length}. Please check your input.`);
         return;
@@ -134,11 +134,11 @@ export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUpload
         startNumber,
         endNumber
       );
-      
+
       if (!result.success) {
         throw new Error(result.error || 'Failed to process answer sheet');
       }
-      
+
       const simulation: Simulation = {
         id: Math.random().toString(36).substr(2, 9),
         title: title || 'TOEIC Answer Sheet Test',
@@ -170,7 +170,7 @@ export function AnswerSheetUploadForm({ onSimulationCreated }: AnswerSheetUpload
           <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-blue-800">
             <p className="font-medium mb-1">Answer Sheet Upload</p>
-            <p>Upload an answer sheet image and AI will extract the answers automatically. The system will create a test with correct answers only. You can add questions later through the admin panel.</p>
+            <p>Upload an answer sheet image and AI will extract the answers automatically. The system will create a test with correct answers only. You can add questions later through the settings panel.</p>
           </div>
         </div>
       </div>

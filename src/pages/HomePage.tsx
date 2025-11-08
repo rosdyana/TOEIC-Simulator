@@ -39,7 +39,7 @@ export function HomePage() {
     try {
       // The system will automatically fill missing questions
       const questions = await llmOCRService.generateReadingQuestions(count);
-      
+
       // Show a message if we got fewer than requested (after retries)
       if (questions.length < count) {
         const missing = count - questions.length;
@@ -51,7 +51,7 @@ export function HomePage() {
       } else {
         alert(`Successfully generated all ${count} reading comprehension questions!`);
       }
-      
+
       const simulation = await fileStorage.createSimulation(
         `AI Generated TOEIC Reading Test (${questions.length} questions)`,
         questions
@@ -79,7 +79,7 @@ export function HomePage() {
         alert('Failed to import simulation. Please check that the file is a valid simulation JSON.');
       }
     };
-    
+
     reader.readAsText(file);
     event.target.value = '';
   };
@@ -96,7 +96,7 @@ export function HomePage() {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const jsonData = await response.text();
       const simulation = fileStorage.importSimulation(jsonData);
       setSimulations(prev => [...prev, simulation]);
@@ -119,7 +119,7 @@ export function HomePage() {
           TOEIC Test Simulator
         </h1>
         <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          Practice for your TOEIC test with our comprehensive simulation platform. 
+          Practice for your TOEIC test with our comprehensive simulation platform.
           Upload test materials, take practice tests, and track your progress.
         </p>
       </div>
@@ -179,7 +179,7 @@ export function HomePage() {
                 ))}
                 {simulations.length > 3 && (
                   <div className="text-center">
-                    <Link to="/admin">
+                    <Link to="/settings">
                       <Button variant="outline" size="sm">
                         View All ({simulations.length})
                       </Button>
@@ -263,7 +263,7 @@ export function HomePage() {
             <div className="text-center py-8">
               <Settings className="h-12 w-12 mx-auto mb-4 text-purple-600" />
               <p className="mb-4">Advanced question builder</p>
-              <Link to="/admin">
+              <Link to="/settings">
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Manually
@@ -298,7 +298,7 @@ export function HomePage() {
                 <div className="text-center">
                   <h3 className="font-medium mb-4">Import Simulation</h3>
                 </div>
-                
+
                 {/* File Upload */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Upload JSON File:</label>
@@ -309,9 +309,9 @@ export function HomePage() {
                     className="w-full p-2 border rounded-md text-sm"
                   />
                 </div>
-                
+
                 <div className="text-center text-sm text-gray-500">OR</div>
-                
+
                 {/* URL Import */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Import from URL:</label>
@@ -322,7 +322,7 @@ export function HomePage() {
                     onChange={(e) => setImportUrl(e.target.value)}
                     className="text-sm"
                   />
-                  <Button 
+                  <Button
                     onClick={handleUrlImport}
                     disabled={isImporting || !importUrl.trim()}
                     className="w-full"
@@ -341,9 +341,9 @@ export function HomePage() {
                     )}
                   </Button>
                 </div>
-                
-                <Button 
-                  variant="outline" 
+
+                <Button
+                  variant="outline"
                   onClick={() => setShowImportForm(false)}
                   className="w-full"
                   size="sm"
