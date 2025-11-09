@@ -10,7 +10,7 @@ A comprehensive ReactJS application for TOEIC test simulation with OCR capabilit
 - **Modern UI**: Built with TailwindCSS and shadcn/ui components
 - **Responsive Design**: Mobile-friendly interface
 - **Progress Tracking**: Detailed statistics and performance analytics
-- **Admin Panel**: Edit and manage test questions
+- **Settings Panel**: Edit and manage test questions
 - **Timer**: Built-in timer for realistic test experience
 
 ## Tech Stack
@@ -81,7 +81,7 @@ The built files will be in the `dist` directory.
 
 ### Managing Tests
 
-1. Go to the Admin page
+1. Go to the Settings page
 2. Select a simulation to edit
 3. Click on any question to edit it
 4. Modify text, options, or correct answers
@@ -107,7 +107,7 @@ src/
 ├── pages/              # Page components
 │   ├── HomePage.tsx    # Landing page
 │   ├── SimulationPage.tsx # Test taking page
-│   ├── AdminPage.tsx   # Admin panel
+│   ├── SettingsPage.tsx   # Settings panel
 │   └── StatsPage.tsx   # Statistics page
 ├── lib/                # Utility functions
 │   ├── utils.ts        # General utilities

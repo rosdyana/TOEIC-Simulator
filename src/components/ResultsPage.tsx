@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Clock, Trophy, RotateCcw, Home } from 'lucide-react';
+import { CheckCircle, XCircle, Trophy, RotateCcw, Home } from 'lucide-react';
 import { Simulation } from '@/types';
 import { calculateScore, formatTime } from '@/lib/utils';
 
@@ -22,11 +22,21 @@ export function ResultsPage({
   const answerRecords = simulation.questions.map(q => ({
     id: q.id,
     selected: answers[q.id] || '',
-    correct: q.answer
+    correct: q.answer,
+    options: q.options
   }));
 
   const score = calculateScore(answerRecords);
-  const correctAnswers = answerRecords.filter(a => a.selected === a.correct).length;
+  const correctAnswers = answerRecords.filter(a => {
+    // If we have options, convert selected text to letter index for comparison
+    if (a.options && a.options.length > 0) {
+      const selectedIndex = a.options.findIndex(option => option === a.selected);
+      const selectedLetter = selectedIndex >= 0 ? String.fromCharCode(65 + selectedIndex) : '';
+      return selectedLetter === a.correct;
+    }
+    // Fallback to direct comparison for backward compatibility
+    return a.selected === a.correct;
+  }).length;
   const totalQuestions = answerRecords.length;
 
   const getScoreColor = (score: number) => {
@@ -44,25 +54,25 @@ export function ResultsPage({
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
       {/* Score Summary */}
       <Card className="text-center">
         <CardHeader>
-          <div className="flex justify-center mb-4">
-            <div className={`p-4 rounded-full ${score >= 80 ? 'bg-green-100' : score >= 60 ? 'bg-yellow-100' : 'bg-red-100'}`}>
-              <Trophy className={`h-12 w-12 ${getScoreColor(score)}`} />
+          <div className="flex justify-center mb-3 sm:mb-4">
+            <div className={`p-3 sm:p-4 rounded-full ${score >= 80 ? 'bg-green-100' : score >= 60 ? 'bg-yellow-100' : 'bg-red-100'}`}>
+              <Trophy className={`h-8 w-8 sm:h-12 sm:w-12 ${getScoreColor(score)}`} />
             </div>
           </div>
-          <CardTitle className="text-3xl mb-2">Test Completed!</CardTitle>
-          <div className={`text-4xl font-bold ${getScoreColor(score)}`}>
+          <CardTitle className="text-2xl sm:text-3xl mb-2">Test Completed!</CardTitle>
+          <div className={`text-3xl sm:text-4xl font-bold ${getScoreColor(score)}`}>
             {score}%
           </div>
-          <p className="text-lg text-gray-600 mt-2">
+          <p className="text-base sm:text-lg text-gray-600 mt-2 px-4">
             {getScoreMessage(score)}
           </p>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 sm:mt-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
                 {correctAnswers}
@@ -92,9 +102,47 @@ export function ResultsPage({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {answerRecords.map((answer, index) => {
-              const isCorrect = answer.selected === answer.correct;
+            {answerRecords.map((answer) => {
+              // Calculate if answer is correct using the same logic as scoring
+              const isCorrect = (() => {
+                if (answer.options && answer.options.length > 0) {
+                  const selectedIndex = answer.options.findIndex(option => option === answer.selected);
+                  const selectedLetter = selectedIndex >= 0 ? String.fromCharCode(65 + selectedIndex) : '';
+                  return selectedLetter === answer.correct;
+                }
+                return answer.selected === answer.correct;
+              })();
+              
               const question = simulation.questions.find(q => q.id === answer.id);
+              
+              // Get the selected answer letter and text for display
+              const getSelectedAnswerInfo = () => {
+                if (answer.options && answer.options.length > 0) {
+                  const selectedIndex = answer.options.findIndex(option => option === answer.selected);
+                  if (selectedIndex >= 0) {
+                    return {
+                      letter: String.fromCharCode(65 + selectedIndex),
+                      text: answer.selected
+                    };
+                  }
+                }
+                return {
+                  letter: 'No answer',
+                  text: answer.selected || 'No answer'
+                };
+              };
+
+              // Get the correct answer text for display
+              const getCorrectAnswerText = () => {
+                if (answer.options && answer.options.length > 0) {
+                  // Convert the correct letter (A, B, C, D) to index
+                  const correctIndex = answer.correct.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
+                  if (correctIndex >= 0 && correctIndex < answer.options.length) {
+                    return answer.options[correctIndex];
+                  }
+                }
+                return answer.correct;
+              };
               
               return (
                 <div
@@ -122,13 +170,20 @@ export function ResultsPage({
                         <div className="text-sm">
                           <span className="font-medium">Your answer:</span>{' '}
                           <span className={isCorrect ? 'text-green-600' : 'text-red-600'}>
-                            {answer.selected || 'No answer'}
+                            {(() => {
+                              const selectedInfo = getSelectedAnswerInfo();
+                              return selectedInfo.letter !== 'No answer' 
+                                ? `${selectedInfo.letter} - ${selectedInfo.text}`
+                                : selectedInfo.letter;
+                            })()}
                           </span>
                         </div>
                         {!isCorrect && (
                           <div className="text-sm">
                             <span className="font-medium">Correct answer:</span>{' '}
-                            <span className="text-green-600">{answer.correct}</span>
+                            <span className="text-green-600">
+                              {answer.correct} - {getCorrectAnswerText()}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -143,13 +198,13 @@ export function ResultsPage({
 
       {/* Action Buttons */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button onClick={onRetake} variant="outline" size="lg">
+        <CardContent className="pt-4 sm:pt-6">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+            <Button onClick={onRetake} variant="outline" size="lg" className="w-full sm:w-auto">
               <RotateCcw className="h-4 w-4 mr-2" />
               Retake Test
             </Button>
-            <Button onClick={onGoHome} size="lg">
+            <Button onClick={onGoHome} size="lg" className="w-full sm:w-auto">
               <Home className="h-4 w-4 mr-2" />
               Back to Home
             </Button>

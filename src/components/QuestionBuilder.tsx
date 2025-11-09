@@ -1,13 +1,15 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, X, Upload, Save, FileText, Image, FileImage, Grid3X3, Eye, Loader2 } from 'lucide-react';
+import { Plus, X, Save, FileText, Image, FileImage, Grid3X3, Eye, Loader2 } from 'lucide-react';
 import { Question, Document } from '@/types';
-import { extractQuestionFromImage } from '@/lib/ocr';
+import { llmOCRService } from '@/lib/llmOCR';
+import { CloudinaryFileUploader } from '@/components/CloudinaryFileUploader';
+import { CloudinaryFile } from '@/lib/cloudinaryStorage';
 
 interface QuestionBuilderProps {
   question?: Question;
@@ -38,9 +40,9 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
   });
 
   const [newInsertionPoint, setNewInsertionPoint] = useState({ position: 0, text: '' });
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isExtractingText, setIsExtractingText] = useState(false);
-  const [ocrError, setOcrError] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<CloudinaryFile | null>(null);
 
   const handleTypeChange = (type: Question['type']) => {
     setQuestionData(prev => ({
@@ -74,18 +76,20 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
     }
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const objectUrl = URL.createObjectURL(file);
-      setQuestionData(prev => ({ ...prev, image: objectUrl }));
-      setOcrError(null); // Clear any previous errors
-    }
+  const handleImageUpload = (file: CloudinaryFile) => {
+    setUploadedImage(file);
+    setQuestionData(prev => ({ ...prev, image: file.secureUrl }));
+    setAiError(null); // Clear any previous errors
+  };
+
+  const handleImageRemove = () => {
+    setUploadedImage(null);
+    setQuestionData(prev => ({ ...prev, image: '' }));
   };
 
   const handleExtractTextFromImage = async () => {
     if (!questionData.image) {
-      setOcrError('Please upload an image first');
+      setAiError('Please upload an image first');
       return;
     }
 
@@ -100,29 +104,32 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
     }
 
     setIsExtractingText(true);
-    setOcrError(null);
+    setAiError(null);
 
     try {
-      // Convert the image URL back to a File object for OCR processing
+      // Convert the Cloudinary image to a File object for AI processing
       const response = await fetch(questionData.image);
       const blob = await response.blob();
-      const file = new File([blob], 'question-image.png', { type: 'image/png' });
+      const file = new File([blob], uploadedImage?.name || 'question-image.png', { 
+        type: uploadedImage?.mimeType || 'image/png' 
+      });
 
-      const result = await extractQuestionFromImage(file);
+      const result = await llmOCRService.extractQuestionsFromImage(file);
 
-      if (result.success) {
+      if (result.success && result.questions && result.questions.length > 0) {
+        const firstQuestion = result.questions[0];
         setQuestionData(prev => ({
           ...prev,
-          question: result.question,
-          options: result.options
+          question: firstQuestion.question,
+          options: firstQuestion.options
         }));
-        console.log('Successfully extracted question text and options from image');
+        console.log('Successfully extracted question text and options from image using AI');
       } else {
-        setOcrError(result.error || 'Failed to extract text from image');
+        setAiError(result.error || 'Failed to extract text from image');
       }
     } catch (error) {
       console.error('Error extracting text from image:', error);
-      setOcrError('An error occurred while processing the image');
+      setAiError('An error occurred while processing the image');
     } finally {
       setIsExtractingText(false);
     }
@@ -313,10 +320,10 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
                 </div>
               )}
 
-              {/* OCR Error Display */}
-              {ocrError && (
+              {/* AI Error Display */}
+              {aiError && (
                 <div className="text-sm text-red-600 bg-red-50 p-2 rounded border">
-                  <strong>OCR Error:</strong> {ocrError}
+                  <strong>AI Error:</strong> {aiError}
                 </div>
               )}
             </div>
@@ -394,7 +401,7 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
 
                 <Card className="p-4 border-dashed">
                   <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <Label htmlFor="doc-title">Document Title</Label>
                         <Input
@@ -488,30 +495,13 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
             <div>
               <Label>Image Upload</Label>
               <div className="mt-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
+                <CloudinaryFileUploader
+                  onFileUploaded={handleImageUpload}
+                  onFileRemoved={handleImageRemove}
+                  acceptedTypes="image/*"
+                  maxSize={10}
+                  multiple={false}
                 />
-                <Button
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Image
-                </Button>
-                {questionData.image && (
-                  <div className="mt-2">
-                    <img
-                      src={questionData.image}
-                      alt="Question image"
-                      className="max-w-full h-32 object-contain border rounded"
-                    />
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -576,12 +566,12 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
           )}
 
           {/* Action Buttons */}
-          <div className="flex space-x-4 pt-4">
-            <Button onClick={handleSave} className="flex-1">
+          <div className="flex flex-col sm:flex-row gap-3 sm:space-x-4 pt-4">
+            <Button onClick={handleSave} className="flex-1 w-full sm:w-auto">
               <Save className="h-4 w-4 mr-2" />
               Save Question
             </Button>
-            <Button variant="outline" onClick={onCancel} className="flex-1">
+            <Button variant="outline" onClick={onCancel} className="flex-1 w-full sm:w-auto">
               <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>
