@@ -3,12 +3,69 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Trash2, Edit, Plus, FileText, Image, FileImage, Grid3X3, Upload, Download, Play } from 'lucide-react';
+import { Trash2, Edit, Plus, FileText, Image, FileImage, Grid3X3, Upload, Download, Play, HelpCircle } from 'lucide-react';
 import { fileStorage } from '@/lib/fileStorage';
 import { Simulation, Question } from '@/types';
 import { QuestionBuilder } from '@/components/QuestionBuilder';
 import { LLMSettings } from '@/components/LLMSettings';
 import { ImageZoom } from '@/components/ui/image-zoom';
+import { useOnboarding, OnboardingStep } from '@/hooks/useOnboarding';
+
+const settingsPageOnboardingSteps: OnboardingStep[] = [
+  {
+    element: 'h1',
+    intro: 'Welcome to the Settings Panel! Here you can create, manage, and edit your TOEIC simulations.',
+    title: 'Settings Panel Overview',
+  },
+  {
+    element: '[data-onboarding="tab-navigation"]',
+    intro: 'Switch between Simulations and LLM Settings tabs. Simulations is where you create and edit tests, while LLM Settings configures AI features.',
+    title: 'Navigation Tabs',
+    position: 'bottom',
+  },
+  {
+    element: '[data-onboarding="simulations-list"]',
+    intro: 'View all your created simulations. Each simulation shows the number of questions and question types. Click on a simulation to edit its questions.',
+    title: 'Simulations List',
+    position: 'right',
+  },
+  {
+    element: '[data-onboarding="simulation-actions"]',
+    intro: 'For each simulation, you can: Start the test, Export to JSON, or Delete the simulation. The Start button takes you directly to the test.',
+    title: 'Simulation Actions',
+    position: 'left',
+  },
+  {
+    element: '[data-onboarding="create-simulation"]',
+    intro: 'Create a new simulation from scratch. Give it a title and then add questions manually.',
+    title: 'Create New Simulation',
+    position: 'left',
+  },
+  {
+    element: '[data-onboarding="import-export"]',
+    intro: 'Import simulations from JSON files or export your simulations to share with others.',
+    title: 'Import/Export Features',
+    position: 'left',
+  },
+  {
+    element: '[data-onboarding="selected-simulation"]',
+    intro: 'When you select a simulation, you can see all its questions here. Click on any question to edit it.',
+    title: 'Edit Selected Simulation',
+    position: 'left',
+  },
+  {
+    element: '[data-onboarding="add-question"]',
+    intro: 'Add new questions to your simulation. You can create different types: text, reading comprehension, image, multi-document, and answer key questions.',
+    title: 'Add Questions',
+    position: 'bottom',
+  },
+  {
+    element: '[data-onboarding="llm-settings"]',
+    intro: 'Configure AI settings for question generation and OCR processing. Set your API keys and adjust parameters.',
+    title: 'LLM Settings',
+    position: 'top',
+  },
+];
 
 export function SettingsPage() {
   const [simulations, setSimulations] = useState<Simulation[]>([]);
@@ -19,6 +76,8 @@ export function SettingsPage() {
   const [newSimulationTitle, setNewSimulationTitle] = useState('');
   const [isCreatingSimulation, setIsCreatingSimulation] = useState(false);
   const [activeTab, setActiveTab] = useState<'simulations' | 'llm-settings'>('simulations');
+
+  const { startTour } = useOnboarding(settingsPageOnboardingSteps, 'settings');
 
   useEffect(() => {
     const loadedSimulations = fileStorage.getSimulations();
@@ -161,13 +220,25 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="text-center px-2">
+      <div className="text-center px-2 relative">
+        <div className="absolute top-0 right-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={startTour}
+            className="text-gray-500 hover:text-gray-700"
+            title="Take a tour of the settings"
+          >
+            <HelpCircle className="h-5 w-5 mr-2" />
+            Help
+          </Button>
+        </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Settings Panel</h1>
         <p className="text-sm sm:text-base text-gray-600">Create and manage complex TOEIC simulations with multiple question types</p>
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex justify-center">
+      <div className="flex justify-center" data-onboarding="tab-navigation">
         <div className="flex bg-gray-100 rounded-lg p-1">
           <button
             onClick={() => setActiveTab('simulations')}
@@ -223,7 +294,7 @@ export function SettingsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Simulations List */}
             <div className="lg:col-span-1">
-              <Card>
+              <Card data-onboarding="simulations-list">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
@@ -232,30 +303,32 @@ export function SettingsPage() {
                         Select a simulation to edit its questions
                       </CardDescription>
                     </div>
-                    <div className="flex gap-2">
-                      <input
-                        type="file"
-                        accept=".json"
-                        onChange={handleImportSimulation}
-                        className="hidden"
-                        id="import-simulation"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => document.getElementById('import-simulation')?.click()}
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Import
-                      </Button>
-                      <Button
-                        onClick={() => setIsCreatingSimulation(true)}
-                        size="sm"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        New
-                      </Button>
-                    </div>
+                     <div className="flex gap-2" data-onboarding="simulation-actions">
+                       <input
+                         type="file"
+                         accept=".json"
+                         onChange={handleImportSimulation}
+                         className="hidden"
+                         id="import-simulation"
+                       />
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         onClick={() => document.getElementById('import-simulation')?.click()}
+                         data-onboarding="import-export"
+                       >
+                         <Upload className="h-4 w-4 mr-2" />
+                         Import
+                       </Button>
+                       <Button
+                         onClick={() => setIsCreatingSimulation(true)}
+                         size="sm"
+                         data-onboarding="create-simulation"
+                       >
+                         <Plus className="h-4 w-4 mr-2" />
+                         New
+                       </Button>
+                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -334,7 +407,7 @@ export function SettingsPage() {
             {/* Questions List */}
             <div className="lg:col-span-2">
               {selectedSimulation ? (
-                <Card>
+                <Card data-onboarding="selected-simulation">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
@@ -343,10 +416,10 @@ export function SettingsPage() {
                           Click on a question to edit it
                         </CardDescription>
                       </div>
-                      <Button onClick={handleCreateQuestion}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Question
-                      </Button>
+                       <Button onClick={handleCreateQuestion} data-onboarding="add-question">
+                         <Plus className="h-4 w-4 mr-2" />
+                         Add Question
+                       </Button>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -433,7 +506,9 @@ export function SettingsPage() {
 
       {/* LLM Settings Tab */}
       {activeTab === 'llm-settings' && (
-        <LLMSettings />
+        <div data-onboarding="llm-settings">
+          <LLMSettings />
+        </div>
       )}
 
       {/* Question Builder Modal */}
