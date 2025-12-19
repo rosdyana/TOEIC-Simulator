@@ -55,12 +55,12 @@ export function SimulationPage() {
     }
   }, [id, navigate]);
 
-  const saveSession = () => {
+  const saveSession = useCallback(() => {
     if (!simulation) return;
-    
+
     // Calculate elapsed time from remaining time
     const timeElapsed = timeLimit - timeRemaining;
-    
+
     const sessionData = {
       simulationId: simulation.id,
       currentQuestion,
@@ -69,10 +69,10 @@ export function SimulationPage() {
       isPaused,
       savedAt: new Date().toISOString()
     };
-    
+
     fileStorage.saveSession(sessionData);
     setSessionSaved(true);
-  };
+  }, [simulation, timeLimit, timeRemaining, currentQuestion, answers, isPaused]);
 
   const handleSubmit = useCallback(() => {
     if (!simulation) return;
@@ -121,35 +121,96 @@ export function SimulationPage() {
     return () => clearInterval(timer);
   }, [simulation, isCompleted, isPaused, timeRemaining, handleSubmit]);
 
-  const handleAnswerSelect = (questionId: number, answer: string) => {
+  const handleAnswerSelect = useCallback((questionId: number, answer: string) => {
     setAnswers(prev => ({
       ...prev,
       [questionId]: answer
     }));
-  };
+  }, []);
 
-  const handlePause = () => {
+  const handlePause = useCallback(() => {
     setIsPaused(true);
     saveSession();
-  };
+  }, [saveSession]);
 
-  const handleResume = () => {
+  const handleResume = useCallback(() => {
     setIsPaused(false);
-  };
+  }, []);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (simulation && currentQuestion < simulation.questions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
     } else {
       handleSubmit();
     }
-  };
+  }, [simulation, currentQuestion, handleSubmit]);
 
-  const handlePrevious = () => {
+  const handlePrevious = useCallback(() => {
     if (currentQuestion > 0) {
       setCurrentQuestion(prev => prev - 1);
     }
-  };
+  }, [currentQuestion]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      // Ignore if typing in an input field
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      const currentQuestionData = simulation?.questions[currentQuestion];
+
+      if (!currentQuestionData) return;
+
+      switch (key) {
+        case '1':
+          if (currentQuestionData.options.length >= 1) {
+            handleAnswerSelect(currentQuestionData.id, currentQuestionData.options[0]);
+          }
+          break;
+        case '2':
+          if (currentQuestionData.options.length >= 2) {
+            handleAnswerSelect(currentQuestionData.id, currentQuestionData.options[1]);
+          }
+          break;
+        case '3':
+          if (currentQuestionData.options.length >= 3) {
+            handleAnswerSelect(currentQuestionData.id, currentQuestionData.options[2]);
+          }
+          break;
+        case '4':
+          if (currentQuestionData.options.length >= 4) {
+            handleAnswerSelect(currentQuestionData.id, currentQuestionData.options[3]);
+          }
+          break;
+        case 'n':
+          event.preventDefault();
+          handleNext();
+          break;
+        case 'p':
+          event.preventDefault();
+          handlePrevious();
+          break;
+        case 's':
+          event.preventDefault();
+          saveSession();
+          break;
+        case 'x':
+          event.preventDefault();
+          if (isPaused) {
+            handleResume();
+          } else {
+            handlePause();
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [simulation, currentQuestion, isPaused, handleAnswerSelect, handleNext, handlePrevious, saveSession, handlePause, handleResume]);
 
   if (!simulation) {
     return (
