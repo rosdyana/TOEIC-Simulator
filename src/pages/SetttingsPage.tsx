@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Trash2, Edit, Plus, FileText, Image, FileImage, Grid3X3, Upload, Download } from 'lucide-react';
+import { Trash2, Edit, Plus, FileText, Image, FileImage, Grid3X3, Upload, Download, Play } from 'lucide-react';
 import { fileStorage } from '@/lib/fileStorage';
 import { Simulation, Question } from '@/types';
 import { QuestionBuilder } from '@/components/QuestionBuilder';
@@ -282,30 +283,40 @@ export function SettingsPage() {
                               ))}
                             </div>
                           </div>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleExportSimulation(simulation.id);
-                              }}
-                              title="Export"
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteSimulation(simulation.id);
-                              }}
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </div>
+                           <div className="flex gap-1">
+                             <Link to={`/simulate/${simulation.id}`}>
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 onClick={(e) => e.stopPropagation()}
+                                 title="Start Test"
+                               >
+                                 <Play className="h-4 w-4" />
+                               </Button>
+                             </Link>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 handleExportSimulation(simulation.id);
+                               }}
+                               title="Export"
+                             >
+                               <Download className="h-4 w-4" />
+                             </Button>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 handleDeleteSimulation(simulation.id);
+                               }}
+                               title="Delete"
+                             >
+                               <Trash2 className="h-4 w-4 text-red-500" />
+                             </Button>
+                           </div>
                         </div>
                       </div>
                     ))}
