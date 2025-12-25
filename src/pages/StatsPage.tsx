@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { TrendingUp, Clock, Target, Trash2 } from 'lucide-react';
+import { TrendingUp, Clock, Target, Trash2, Eye } from 'lucide-react';
 import { storage } from '@/lib/storage';
 import { StatsRecord, Simulation } from '@/types';
 
@@ -42,8 +43,33 @@ export function StatsPage() {
     if (filteredStats.length === 0) return '00:00:00';
     
     const totalSeconds = filteredStats.reduce((total, stat) => {
-      const [hours, minutes, seconds] = stat.timeSpent.split(':').map(Number);
-      return total + (hours * 3600) + (minutes * 60) + seconds;
+      try {
+        if (!stat.timeSpent || typeof stat.timeSpent !== 'string') {
+          return total;
+        }
+        
+        const parts = stat.timeSpent.split(':').map(Number);
+        
+        // Validate that all parts are valid numbers
+        if (parts.some(isNaN)) {
+          console.warn(`Invalid timeSpent format: ${stat.timeSpent}`);
+          return total;
+        }
+        
+        if (parts.length === 3) {
+          // HH:MM:SS format
+          return total + (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+        } else if (parts.length === 2) {
+          // MM:SS format (backward compatibility)
+          return total + (parts[0] * 60) + parts[1];
+        } else {
+          console.warn(`Unexpected timeSpent format: ${stat.timeSpent}`);
+          return total;
+        }
+      } catch (error) {
+        console.error(`Error parsing timeSpent: ${stat.timeSpent}`, error);
+        return total;
+      }
     }, 0);
 
     const hours = Math.floor(totalSeconds / 3600);
@@ -273,10 +299,18 @@ export function StatsPage() {
                         </div>
                         <div className="text-center">
                           <div className="text-lg font-bold text-blue-600">
-                            {stat.timeSpent}
+                            {stat.timeSpent || '00:00:00'}
                           </div>
                           <div className="text-xs text-gray-500">Time</div>
                         </div>
+                        {stat.id && (
+                          <Link to={`/stats/review/${stat.id}`}>
+                            <Button variant="outline" size="sm" className="flex items-center gap-1">
+                              <Eye className="h-4 w-4" />
+                              <span className="hidden sm:inline">View Details</span>
+                            </Button>
+                          </Link>
+                        )}
                       </div>
                     </div>
                   ))}

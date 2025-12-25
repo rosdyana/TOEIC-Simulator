@@ -113,6 +113,15 @@ export function Layout({ children }: LayoutProps) {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 animate-in fade-in zoom-in-95 duration-500">
         {children}
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-200/60 bg-white/50 backdrop-blur-sm mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <p className="text-center text-sm text-slate-500">
+            Made with ❤️ in 🇹🇼 by 🇮🇩👦
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

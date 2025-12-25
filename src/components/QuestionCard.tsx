@@ -59,7 +59,7 @@ export function QuestionCard({ question, selectedAnswer, onAnswerSelect }: Quest
           <RadioGroup
             value={selectedAnswer}
             onValueChange={onAnswerSelect}
-            className="grid grid-cols-1 gap-4"
+            className="grid grid-cols-2 gap-4"
           >
             {question.options.map((option, index) => {
               const letter = String.fromCharCode(65 + index);
@@ -71,9 +71,9 @@ export function QuestionCard({ question, selectedAnswer, onAnswerSelect }: Quest
                   <Label
                     htmlFor={`option-${index}`}
                     className={cn(
-                      "flex items-center space-x-4 cursor-pointer p-5 rounded-2xl border-2 transition-all duration-300",
+                      "flex items-center space-x-3 cursor-pointer p-4 rounded-2xl border-2 transition-all duration-300 h-full",
                       isSelected 
-                        ? "bg-blue-50 border-blue-600 shadow-lg shadow-blue-100 translate-x-1" 
+                        ? "bg-blue-50 border-blue-600 shadow-lg shadow-blue-100" 
                         : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50"
                     )}
                   >
@@ -84,7 +84,7 @@ export function QuestionCard({ question, selectedAnswer, onAnswerSelect }: Quest
                       {letter}
                     </div>
                     <span className={cn(
-                      "text-base sm:text-lg font-bold leading-tight",
+                      "text-base font-bold leading-tight",
                       isSelected ? "text-blue-900" : "text-slate-700"
                     )}>
                       {option}

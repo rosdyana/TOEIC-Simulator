@@ -37,6 +37,7 @@ export interface AnswerRecord {
 }
 
 export interface StatsRecord {
+  id: string;
   simulationId: string;
   score: number;
   timeSpent: string;
@@ -48,3 +49,25 @@ export interface UploadedFile {
   file: File;
   preview: string;
 }
+
+export interface KeyMapping {
+  answerA: string;
+  answerB: string;
+  answerC: string;
+  answerD: string;
+  nextQuestion: string;
+  previousQuestion: string;
+  saveProgress: string;
+  pauseResume: string;
+}
+
+export const DEFAULT_KEY_MAPPING: KeyMapping = {
+  answerA: '1',
+  answerB: '2',
+  answerC: '3',
+  answerD: '4',
+  nextQuestion: 'n',
+  previousQuestion: 'p',
+  saveProgress: 's',
+  pauseResume: 'x'
+};

@@ -6,11 +6,13 @@ import { Clock, ArrowLeft, ArrowRight, CheckCircle, Pause, Play, HelpCircle } fr
 import { cn } from '@/lib/utils';
 import { fileStorage } from '@/lib/fileStorage';
 import { storage } from '@/lib/storage';
-import { Simulation, StatsRecord } from '@/types';
-import { formatTime, calculateScore, calculateTOEICTimeLimit, isReadingOnlyTest } from '@/lib/utils';
+import { Simulation, StatsRecord, KeyMapping } from '@/types';
+import { formatTime, calculateScore, calculateTOEICTimeLimit, isReadingOnlyTest, generateId } from '@/lib/utils';
 import { QuestionCard } from '@/components/QuestionCard';
 import { ResultsPage } from '@/components/ResultsPage';
 import { useOnboarding, OnboardingStep } from '@/hooks/useOnboarding';
+
+const AUTO_ADVANCE_DELAY_MS = 300; // Delay before auto-advancing to show visual feedback
 
 const simulationPageOnboardingSteps: OnboardingStep[] = [
   {
@@ -31,7 +33,7 @@ const simulationPageOnboardingSteps: OnboardingStep[] = [
   },
   {
     element: '[data-onboarding="answer-options"]',
-    intro: 'Click on your answer choice, or use keyboard shortcuts: 1=A, 2=B, 3=C, 4=D. These work even when typing in input fields.',
+    intro: 'Click on your answer choice, or use keyboard shortcuts: 1=A, 2=B, 3=C, 4=D. Using keyboard shortcuts will auto-advance to the next question.',
     title: 'Answer Selection',
   },
   {
@@ -47,7 +49,7 @@ const simulationPageOnboardingSteps: OnboardingStep[] = [
     position: 'top',
   },
   {
-    intro: '⚡ <strong>Keyboard Shortcuts:</strong><br/>• 1,2,3,4 = Select answers A,B,C,D<br/>• N = Next question<br/>• P = Previous question<br/>• S = Save progress<br/>• X = Pause/Resume test<br/><br/>Use these shortcuts for faster test-taking!',
+    intro: '⚡ <strong>Keyboard Shortcuts (customizable in Settings):</strong><br/>• Default: 1,2,3,4 = Select answers A,B,C,D (auto-advances)<br/>• N = Next question<br/>• P = Previous question<br/>• S = Save progress<br/>• X = Pause/Resume test<br/><br/>Customize shortcuts in Settings > Keyboard Shortcuts.',
     title: 'Keyboard Shortcuts',
   },
   {
@@ -70,6 +72,7 @@ export function SimulationPage() {
   const [showResults, setShowResults] = useState(false);
   const [isPaused, setIsPaused] = useState(true);
   const [sessionSaved, setSessionSaved] = useState(false);
+  const [keyMapping, setKeyMapping] = useState<KeyMapping>(storage.getKeyMapping());
 
   const handleResume = useCallback(() => {
     setIsPaused(false);
@@ -163,6 +166,7 @@ export function SimulationPage() {
     const timeElapsed = timeLimit - timeRemaining;
     
     const statsRecord: StatsRecord = {
+      id: generateId(),
       simulationId: simulation.id,
       score,
       timeSpent: formatTime(timeElapsed),
@@ -220,6 +224,15 @@ export function SimulationPage() {
     }
   }, [currentQuestion]);
 
+  // Reload key mapping when window regains focus (in case settings changed)
+  useEffect(() => {
+    const handleFocus = () => {
+      setKeyMapping(storage.getKeyMapping());
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -233,53 +246,44 @@ export function SimulationPage() {
 
       if (!currentQuestionData) return;
 
-      switch (key) {
-        case '1':
-          if (currentQuestionData.options.length >= 1) {
-            handleAnswerSelect(currentQuestionData.id, currentQuestionData.options[0]);
-          }
-          break;
-        case '2':
-          if (currentQuestionData.options.length >= 2) {
-            handleAnswerSelect(currentQuestionData.id, currentQuestionData.options[1]);
-          }
-          break;
-        case '3':
-          if (currentQuestionData.options.length >= 3) {
-            handleAnswerSelect(currentQuestionData.id, currentQuestionData.options[2]);
-          }
-          break;
-        case '4':
-          if (currentQuestionData.options.length >= 4) {
-            handleAnswerSelect(currentQuestionData.id, currentQuestionData.options[3]);
-          }
-          break;
-        case 'n':
-          event.preventDefault();
-          handleNext();
-          break;
-        case 'p':
-          event.preventDefault();
-          handlePrevious();
-          break;
-        case 's':
-          event.preventDefault();
-          saveSession();
-          break;
-        case 'x':
-          event.preventDefault();
-          if (isPaused) {
-            handleResume();
-          } else {
-            handlePause();
-          }
-          break;
+      // Use dynamic key mappings
+      const km = keyMapping;
+
+      if (key === km.answerA && currentQuestionData.options.length >= 1) {
+        handleAnswerSelect(currentQuestionData.id, currentQuestionData.options[0]);
+        // Auto-advance after delay for visual feedback
+        setTimeout(() => handleNext(), AUTO_ADVANCE_DELAY_MS);
+      } else if (key === km.answerB && currentQuestionData.options.length >= 2) {
+        handleAnswerSelect(currentQuestionData.id, currentQuestionData.options[1]);
+        setTimeout(() => handleNext(), AUTO_ADVANCE_DELAY_MS);
+      } else if (key === km.answerC && currentQuestionData.options.length >= 3) {
+        handleAnswerSelect(currentQuestionData.id, currentQuestionData.options[2]);
+        setTimeout(() => handleNext(), AUTO_ADVANCE_DELAY_MS);
+      } else if (key === km.answerD && currentQuestionData.options.length >= 4) {
+        handleAnswerSelect(currentQuestionData.id, currentQuestionData.options[3]);
+        setTimeout(() => handleNext(), AUTO_ADVANCE_DELAY_MS);
+      } else if (key === km.nextQuestion) {
+        event.preventDefault();
+        handleNext();
+      } else if (key === km.previousQuestion) {
+        event.preventDefault();
+        handlePrevious();
+      } else if (key === km.saveProgress) {
+        event.preventDefault();
+        saveSession();
+      } else if (key === km.pauseResume) {
+        event.preventDefault();
+        if (isPaused) {
+          handleResume();
+        } else {
+          handlePause();
+        }
       }
     };
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [simulation, currentQuestion, isPaused, handleAnswerSelect, handleNext, handlePrevious, saveSession, handlePause, handleResume]);
+  }, [simulation, currentQuestion, isPaused, keyMapping, handleAnswerSelect, handleNext, handlePrevious, saveSession, handlePause, handleResume]);
 
   if (!simulation) {
     return (

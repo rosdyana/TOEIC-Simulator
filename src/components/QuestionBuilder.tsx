@@ -13,14 +13,15 @@ import { CloudinaryFile } from '@/lib/cloudinaryStorage';
 
 interface QuestionBuilderProps {
   question?: Question;
+  nextId?: number; // ID to assign to new questions
   onSave: (question: Question) => void;
   onCancel: () => void;
 }
 
-export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderProps) {
+export function QuestionBuilder({ question, nextId = 1, onSave, onCancel }: QuestionBuilderProps) {
   const [questionData, setQuestionData] = useState<Question>(
     question || {
-      id: 0,
+      id: nextId,
       type: 'text',
       question: '',
       options: ['', '', '', ''],
@@ -225,18 +226,30 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            {getTypeIcon(questionData.type)}
-            Question Builder
-          </CardTitle>
-          <CardDescription>
-            Create or edit a question for your TOEIC simulation.
-            {questionData.type !== 'answer-key' && (
-              <span className="block mt-1 text-sm text-blue-600">
-                💡 Tip: Upload an image of a question to automatically extract the text and answer options!
-              </span>
-            )}
-          </CardDescription>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                {getTypeIcon(questionData.type)}
+                Question Builder
+              </CardTitle>
+              <CardDescription>
+                Create or edit a question for your TOEIC simulation.
+                {questionData.type !== 'answer-key' && (
+                  <span className="block mt-1 text-sm text-blue-600">
+                    Tip: Upload an image of a question to automatically extract the text and answer options!
+                  </span>
+                )}
+              </CardDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onCancel}
+              className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Question Type */}
@@ -510,39 +523,42 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
           {questionData.type !== 'answer-key' && (
             <div>
               <Label>Answer Options</Label>
-              <div className="space-y-2 mt-2">
+              <div className="grid grid-cols-2 gap-3 mt-2">
                 {questionData.options.map((option, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <span className="w-6 text-sm font-medium">
-                      {String.fromCharCode(65 + index)})
+                  <div key={index} className="flex items-center gap-2 p-2 border rounded-lg bg-gray-50">
+                    <span className="w-6 h-6 flex items-center justify-center text-sm font-semibold bg-blue-100 text-blue-700 rounded">
+                      {String.fromCharCode(65 + index)}
                     </span>
                     <Input
                       value={option}
                       onChange={(e) => handleOptionChange(index, e.target.value)}
                       placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                      className="flex-1"
+                      className="flex-1 bg-white"
                     />
                     {questionData.options.length > 2 && (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => removeOption(index)}
+                        className="h-8 w-8 p-0 text-gray-400 hover:text-red-500"
                       >
                         <X className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
                 ))}
+              </div>
+              {questionData.options.length < 6 && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={addOption}
-                  className="w-full"
+                  className="mt-3"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Option
                 </Button>
-              </div>
+              )}
             </div>
           )}
 
@@ -565,19 +581,22 @@ export function QuestionBuilder({ question, onSave, onCancel }: QuestionBuilderP
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:space-x-4 pt-4">
-            <Button onClick={handleSave} className="flex-1 w-full sm:w-auto">
-              <Save className="h-4 w-4 mr-2" />
-              Save Question
-            </Button>
-            <Button variant="outline" onClick={onCancel} className="flex-1 w-full sm:w-auto">
-              <X className="h-4 w-4 mr-2" />
-              Cancel
-            </Button>
-          </div>
         </CardContent>
       </Card>
+      
+      {/* Sticky Action Buttons */}
+      <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 -mx-2 sm:-mx-4 rounded-b-lg shadow-lg">
+        <div className="flex flex-col sm:flex-row gap-3 sm:space-x-4 max-w-4xl mx-auto">
+          <Button onClick={handleSave} className="flex-1 w-full sm:w-auto">
+            <Save className="h-4 w-4 mr-2" />
+            Save Question
+          </Button>
+          <Button variant="outline" onClick={onCancel} className="flex-1 w-full sm:w-auto">
+            <X className="h-4 w-4 mr-2" />
+            Cancel
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

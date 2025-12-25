@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Trophy, RotateCcw, Home } from 'lucide-react';
+import { CheckCircle, XCircle, Trophy, RotateCcw, Home, Filter } from 'lucide-react';
 import { Simulation } from '@/types';
 import { calculateScore, formatTime } from '@/lib/utils';
 
@@ -19,6 +20,8 @@ export function ResultsPage({
   onRetake, 
   onGoHome 
 }: ResultsPageProps) {
+  const [filter, setFilter] = useState<'all' | 'correct' | 'wrong'>('all');
+
   const answerRecords = simulation.questions.map(q => ({
     id: q.id,
     selected: answers[q.id] || '',
@@ -98,11 +101,55 @@ export function ResultsPage({
       {/* Detailed Results */}
       <Card>
         <CardHeader>
-          <CardTitle>Answer Review</CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Answer Review
+            </CardTitle>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant={filter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilter('all')}
+              >
+                All ({totalQuestions})
+              </Button>
+              <Button
+                variant={filter === 'correct' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilter('correct')}
+                className={filter === 'correct' ? 'bg-green-600 hover:bg-green-700' : ''}
+              >
+                Correct ({correctAnswers})
+              </Button>
+              <Button
+                variant={filter === 'wrong' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilter('wrong')}
+                className={filter === 'wrong' ? 'bg-red-600 hover:bg-red-700' : ''}
+              >
+                Wrong ({totalQuestions - correctAnswers})
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {answerRecords.map((answer) => {
+            {answerRecords.filter((answer) => {
+              if (filter === 'all') return true;
+              
+              // Calculate if answer is correct
+              const isCorrect = (() => {
+                if (answer.options && answer.options.length > 0) {
+                  const selectedIndex = answer.options.findIndex(option => option === answer.selected);
+                  const selectedLetter = selectedIndex >= 0 ? String.fromCharCode(65 + selectedIndex) : '';
+                  return selectedLetter === answer.correct;
+                }
+                return answer.selected === answer.correct;
+              })();
+              
+              return filter === 'correct' ? isCorrect : !isCorrect;
+            }).map((answer) => {
               // Calculate if answer is correct using the same logic as scoring
               const isCorrect = (() => {
                 if (answer.options && answer.options.length > 0) {
